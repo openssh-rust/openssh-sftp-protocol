@@ -1,8 +1,8 @@
-use super::{constants, extensions::Extensions, file::FileAttrs, seq_iter::SeqIter};
+use super::{
+    constants, extensions::Extensions, file::FileAttrs, seq_iter::SeqIter, visitor::impl_visitor,
+};
 
-use core::fmt;
-
-use serde::de::{Deserializer, Error, SeqAccess, Unexpected, Visitor};
+use serde::de::{Deserializer, Error, Unexpected};
 use serde::Deserialize;
 use ssh_format::from_bytes;
 
@@ -88,73 +88,59 @@ impl Response {
     }
 }
 
-impl<'de> Deserialize<'de> for Response {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ResponseVisitor;
+impl_visitor!(
+    Response,
+    ResponseVisitor,
+    "Expects a u8 type and payload",
+    seq,
+    {
+        use constants::*;
+        use ResponseInner::*;
 
-        impl<'de> Visitor<'de> for ResponseVisitor {
-            type Value = Response;
+        let mut iter = SeqIter::new(seq);
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "Expects a u8 type and payload")
+        let discriminant: u8 = iter.get_next()?;
+        let response_id: u32 = iter.get_next()?;
+
+        let response_inner = match discriminant {
+            SSH_FXP_STATUS => Status {
+                status_code: iter.get_next()?,
+                err_msg: iter.get_next()?,
+                language_tag: iter.get_next()?,
+            },
+
+            SSH_FXP_HANDLE => Handle(iter.get_next()?),
+
+            SSH_FXP_DATA => Data,
+
+            SSH_FXP_NAME => {
+                let len: u32 = iter.get_next()?;
+                let len = len as usize;
+                let mut entries = Vec::<NameEntry>::with_capacity(len);
+
+                for _ in 0..len {
+                    entries.push(iter.get_next()?);
+                }
+
+                Name(entries.into_boxed_slice())
             }
 
-            fn visit_seq<V>(self, seq: V) -> Result<Self::Value, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                use constants::*;
-                use ResponseInner::*;
+            SSH_FXP_ATTRS => Attrs(iter.get_next()?),
 
-                let mut iter = SeqIter::new(seq);
-
-                let discriminant: u8 = iter.get_next()?;
-                let response_id: u32 = iter.get_next()?;
-
-                let response_inner = match discriminant {
-                    SSH_FXP_STATUS => Status {
-                        status_code: iter.get_next()?,
-                        err_msg: iter.get_next()?,
-                        language_tag: iter.get_next()?,
-                    },
-
-                    SSH_FXP_HANDLE => Handle(iter.get_next()?),
-
-                    SSH_FXP_DATA => Data,
-
-                    SSH_FXP_NAME => {
-                        let len: u32 = iter.get_next()?;
-                        let len = len as usize;
-                        let mut entries = Vec::<NameEntry>::with_capacity(len);
-
-                        for _ in 0..len {
-                            entries.push(iter.get_next()?);
-                        }
-
-                        Name(entries.into_boxed_slice())
-                    }
-
-                    SSH_FXP_ATTRS => Attrs(iter.get_next()?),
-
-                    _ => {
-                        return Err(Error::invalid_value(
-                            Unexpected::Unsigned(discriminant as u64),
-                            &"Invalid packet type",
-                        ))
-                    }
-                };
-
-                Ok(Response {
-                    response_id,
-                    response_inner,
-                })
+            _ => {
+                return Err(Error::invalid_value(
+                    Unexpected::Unsigned(discriminant as u64),
+                    &"Invalid packet type",
+                ))
             }
-        }
+        };
 
-        // Pass a dummy size here since ssh_format doesn't care
-        deserializer.deserialize_tuple(3, ResponseVisitor)
+        Ok(Response {
+            response_id,
+            response_inner,
+        })
     }
-}
+);
 
 #[derive(Debug, Copy, Clone)]
 pub enum StatusCode {
