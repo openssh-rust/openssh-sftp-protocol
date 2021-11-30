@@ -1,9 +1,10 @@
+use core::iter::Iterator;
 use core::ops::Deref;
 
 use serde::de::{Deserialize, Deserializer, Error};
 use serde::Serialize;
 
-pub use vec_strings::Strings;
+pub use vec_strings::{Strings, StringsIter};
 
 #[derive(Debug, Default, Eq, PartialEq, Clone, Hash, Serialize)]
 #[serde(transparent)]
@@ -61,5 +62,15 @@ impl<'de> Deserialize<'de> for Extensions {
 
         Extensions::new(strs)
             .ok_or_else(|| Error::invalid_length(len, &"Expected even number of strings"))
+    }
+}
+
+pub struct ExtensionsIter<'a>(StringsIter<'a>);
+
+impl<'a> Iterator for ExtensionsIter<'a> {
+    type Item = (&'a str, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some((self.0.next()?, self.0.next().unwrap()))
     }
 }
