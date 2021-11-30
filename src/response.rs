@@ -1,5 +1,6 @@
 use super::{
     constants, extensions::Extensions, file::FileAttrs, seq_iter::SeqIter, visitor::impl_visitor,
+    HandleOwned,
 };
 
 use serde::de::{Deserializer, Error, Unexpected};
@@ -50,7 +51,7 @@ pub enum ResponseInner {
         language_tag: Box<str>,
     },
 
-    Handle(Box<[u8]>),
+    Handle(HandleOwned),
 
     /// The remaining bytes returned by ssh_format::from_bytes is the data
     /// of the packet.
