@@ -32,60 +32,49 @@ impl Extensions {
         }
     }
 
-    #[inline]
     pub fn add_extension(&mut self, name: &str, data: &str) {
         self.0.push(name);
         self.0.push(data);
     }
 
-    #[inline(always)]
     pub fn reserve(&mut self, extensions: usize) {
         self.0.reserve(extensions * 2);
     }
 
-    #[inline(always)]
     pub fn reserve_strs(&mut self, cnt: usize) {
         self.0.reserve(cnt);
     }
 
-    #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
         self.0.shrink_to_fit();
     }
 
-    #[inline(always)]
     pub fn get(&self, index: u32) -> Option<(&str, &str)> {
         Some((self.0.get(index * 2)?, self.0.get(index * 2 + 1).unwrap()))
     }
 
     /// Accumulate length of all strings.
-    #[inline(always)]
     pub fn strs_len(&self) -> u32 {
         self.0.strs_len()
     }
 
-    #[inline(always)]
     pub fn len(&self) -> u32 {
         self.0.len() / 2
     }
 
-    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    #[inline(always)]
     pub fn iter(&self) -> ExtensionsIter<'_> {
         ExtensionsIter(self.0.iter())
     }
 
     /// Return the underlying Strings
-    #[inline(always)]
     pub fn get_strings(&self) -> &Strings {
         &self.0
     }
 
-    #[inline(always)]
     pub fn into_strings(self) -> Strings {
         self.0
     }
@@ -157,7 +146,6 @@ impl<'a> IntoIterator for &'a Extensions {
     type Item = (&'a str, &'a str);
     type IntoIter = ExtensionsIter<'a>;
 
-    #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
