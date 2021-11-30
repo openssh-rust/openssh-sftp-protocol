@@ -1,9 +1,9 @@
 use super::seq_iter::SeqIter;
+use super::visitor::impl_visitor;
 
 use core::fmt;
 use core::iter::{IntoIterator, Iterator};
 
-use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
 pub use vec_strings::{Strings, StringsIter};
@@ -97,40 +97,26 @@ impl Serialize for Extensions {
     }
 }
 
-impl<'de> Deserialize<'de> for Extensions {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ExtensionsVisitor;
+impl_visitor!(
+    Extensions,
+    ExtensionsVisitor,
+    "A u32 length and &[str]",
+    seq,
+    {
+        let mut iter = SeqIter::new(seq);
 
-        impl<'de> Visitor<'de> for ExtensionsVisitor {
-            type Value = Extensions;
+        let len: u32 = iter.get_next()?;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "A u32 length and &[str]")
-            }
+        let mut extensions = Extensions::default();
+        extensions.reserve(len as usize);
 
-            fn visit_seq<V>(self, seq: V) -> Result<Self::Value, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                let mut iter = SeqIter::new(seq);
-
-                let len: u32 = iter.get_next()?;
-
-                let mut extensions = Extensions::default();
-                extensions.reserve(len as usize);
-
-                for _ in 0..len {
-                    extensions.add_extension(iter.get_next()?, iter.get_next()?);
-                }
-
-                Ok(extensions)
-            }
+        for _ in 0..len {
+            extensions.add_extension(iter.get_next()?, iter.get_next()?);
         }
 
-        // dummy size here since ssh_format doesn't care
-        deserializer.deserialize_tuple(2, ExtensionsVisitor)
+        Ok(extensions)
     }
-}
+);
 
 impl<'a> IntoIterator for &'a Extensions {
     type Item = (&'a str, &'a str);
