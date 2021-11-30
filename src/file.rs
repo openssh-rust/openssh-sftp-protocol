@@ -32,6 +32,11 @@ pub struct FileAttrs {
 }
 
 impl FileAttrs {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn set_size(&mut self, size: u64) {
         self.flags |= constants::SSH_FILEXFER_ATTR_SIZE;
         self.size = Some(size);
