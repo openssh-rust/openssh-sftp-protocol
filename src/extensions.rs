@@ -84,6 +84,7 @@ impl Extensions {
         &self.0
     }
 
+    #[inline(always)]
     pub fn into_strings(self) -> Strings {
         self.0
     }
