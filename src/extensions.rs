@@ -71,6 +71,10 @@ impl Extensions {
     pub fn get_strings(&self) -> &Strings {
         &self.0
     }
+
+    pub fn into_strings(self) -> Strings {
+        self.0
+    }
 }
 
 impl<'de> Deserialize<'de> for Extensions {
