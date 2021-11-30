@@ -15,6 +15,12 @@ impl From<Extensions> for Strings {
     }
 }
 
+impl<'a> From<&'a Extensions> for &'a Strings {
+    fn from(extensions: &'a Extensions) -> Self {
+        extensions.get_strings()
+    }
+}
+
 impl Extensions {
     /// Return Some(...) if strs.len() is even.
     /// None otherwise.
