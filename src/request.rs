@@ -1,4 +1,4 @@
-use super::{constants, extensions::Extensions, file::FileAttrs};
+use super::{constants, extensions::Extensions, file::FileAttrs, Handle};
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -31,7 +31,7 @@ pub enum RequestInner<'a> {
     Open(OpenFile<'a>),
 
     /// Response will be SSH_FXP_STATUS.
-    Close { handle: Cow<'a, [u8]> },
+    Close(Cow<'a, Handle>),
 
     /// In response to this request, the server will read as many bytes as it
     /// can from the file (up to `len'), and return them in a SSH_FXP_DATA
@@ -43,7 +43,7 @@ pub enum RequestInner<'a> {
     ///
     /// For e.g. device files this may return fewer bytes than requested.
     Read {
-        handle: Cow<'a, [u8]>,
+        handle: Cow<'a, Handle>,
         offset: u64,
         len: u32,
     },
@@ -70,7 +70,7 @@ pub enum RequestInner<'a> {
     Opendir(Cow<'a, Path>),
 
     /// Responds with a SSH_FXP_NAME or a SSH_FXP_STATUS message
-    Readdir { handle: Cow<'a, [u8]> },
+    Readdir(Cow<'a, Handle>),
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
     Stat { path: Cow<'a, Path> },
@@ -81,7 +81,7 @@ pub enum RequestInner<'a> {
     Lstat { path: Cow<'a, Path> },
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
-    Fstat { handle: Cow<'a, [u8]> },
+    Fstat(Cow<'a, Handle>),
 
     /// Responds with SSH_FXP_STATUS
     Setstat {
@@ -91,7 +91,7 @@ pub enum RequestInner<'a> {
 
     /// Responds with SSH_FXP_STATUS
     Fsetstat {
-        handle: Cow<'a, [u8]>,
+        handle: Cow<'a, Handle>,
         attrs: FileAttrs,
     },
 
@@ -123,9 +123,7 @@ impl Serialize for Request<'_> {
 
         match &self.inner {
             Open(params) => (constants::SSH_FXP_OPEN, request_id, params).serialize(serializer),
-            Close { handle } => {
-                (constants::SSH_FXP_CLOSE, request_id, handle).serialize(serializer)
-            }
+            Close(handle) => (constants::SSH_FXP_CLOSE, request_id, handle).serialize(serializer),
             Read {
                 handle,
                 offset,
@@ -148,7 +146,7 @@ impl Serialize for Request<'_> {
 
             Opendir(path) => (constants::SSH_FXP_OPENDIR, request_id, path).serialize(serializer),
 
-            Readdir { handle } => {
+            Readdir(handle) => {
                 (constants::SSH_FXP_READDIR, request_id, handle).serialize(serializer)
             }
 
@@ -156,9 +154,7 @@ impl Serialize for Request<'_> {
 
             Lstat { path } => (constants::SSH_FXP_LSTAT, request_id, path).serialize(serializer),
 
-            Fstat { handle } => {
-                (constants::SSH_FXP_FSTAT, request_id, handle).serialize(serializer)
-            }
+            Fstat(handle) => (constants::SSH_FXP_FSTAT, request_id, handle).serialize(serializer),
 
             Setstat { path, attrs } => {
                 (constants::SSH_FXP_SETSTAT, request_id, path, attrs).serialize(serializer)

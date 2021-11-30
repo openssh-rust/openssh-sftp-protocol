@@ -11,3 +11,5 @@ pub mod extensions;
 pub mod file;
 pub mod request;
 pub mod response;
+
+pub type Handle = [u8];
