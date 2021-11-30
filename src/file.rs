@@ -1,11 +1,9 @@
-use super::constants;
+use super::{constants, extensions::Extensions};
 
 use core::fmt;
 
 use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor};
 use serde::Serialize;
-
-use vec_strings::Strings;
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct FileAttrs {
@@ -28,7 +26,7 @@ pub struct FileAttrs {
     time: Option<(u32, u32)>,
 
     /// present only if flag SSH_FILEXFER_ATTR_EXTENDED
-    extensions: Option<Strings>,
+    extensions: Option<Extensions>,
 }
 
 impl FileAttrs {
@@ -57,7 +55,7 @@ impl FileAttrs {
         self.time = Some((atime, mtime));
     }
 
-    pub fn set_extensions(&mut self, extensions: Strings) {
+    pub fn set_extensions(&mut self, extensions: Extensions) {
         self.flags |= constants::SSH_FILEXFER_ATTR_EXTENDED;
         self.extensions = Some(extensions);
     }
@@ -80,11 +78,11 @@ impl FileAttrs {
         self.time
     }
 
-    pub fn get_extensions(&self) -> &Option<Strings> {
+    pub fn get_extensions(&self) -> &Option<Extensions> {
         &self.extensions
     }
 
-    pub fn get_extensions_mut(&mut self) -> &mut Option<Strings> {
+    pub fn get_extensions_mut(&mut self) -> &mut Option<Extensions> {
         &mut self.extensions
     }
 }
