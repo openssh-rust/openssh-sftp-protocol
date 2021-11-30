@@ -2,12 +2,11 @@ use core::fmt;
 use core::iter::{IntoIterator, Iterator};
 
 use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor};
-use serde::Serialize;
+use serde::ser::{Serialize, SerializeTuple, Serializer};
 
 pub use vec_strings::{Strings, StringsIter};
 
-#[derive(Debug, Default, Eq, PartialEq, Clone, Hash, Serialize)]
-#[serde(transparent)]
+#[derive(Debug, Default, Eq, PartialEq, Clone, Hash)]
 pub struct Extensions(Strings);
 
 impl Extensions {
@@ -75,6 +74,21 @@ impl Extensions {
 
     pub fn into_strings(self) -> Strings {
         self.0
+    }
+}
+
+impl Serialize for Extensions {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut tuple_serializer = serializer.serialize_tuple(1 + self.0.len() as usize)?;
+
+        tuple_serializer.serialize_element(&self.len())?;
+
+        for (extension_name, extension_data) in self {
+            tuple_serializer.serialize_element(extension_name)?;
+            tuple_serializer.serialize_element(extension_data)?;
+        }
+
+        tuple_serializer.end()
     }
 }
 
