@@ -35,8 +35,8 @@ impl Extensions {
         self.0.reserve(cnt);
     }
 
+    #[inline(always)]
     pub fn shrink_to_fit(&mut self) {
-        self.0.shrink_to_fit();
         self.0.shrink_to_fit();
     }
 
