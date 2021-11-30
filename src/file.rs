@@ -1,8 +1,8 @@
-use super::{constants, extensions::Extensions};
+use super::{constants, extensions::Extensions, seq_iter::SeqIter};
 
 use core::fmt;
 
-use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor};
+use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::Serialize;
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -90,21 +90,7 @@ impl FileAttrs {
 /// This implementation is only usuable for ssh_format::Deserializer
 impl<'de> Deserialize<'de> for FileAttrs {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct FileAttrVisitor(usize);
-
-        impl FileAttrVisitor {
-            fn get_next<'de, T, V>(&mut self, seq: &mut V) -> Result<T, V::Error>
-            where
-                T: Deserialize<'de>,
-                V: SeqAccess<'de>,
-            {
-                let res = seq
-                    .next_element()?
-                    .ok_or_else(|| Error::invalid_length(self.0, self));
-                self.0 += 1;
-                res
-            }
-        }
+        struct FileAttrVisitor;
 
         impl<'de> Visitor<'de> for FileAttrVisitor {
             type Value = FileAttrs;
@@ -113,36 +99,37 @@ impl<'de> Deserialize<'de> for FileAttrs {
                 write!(formatter, "A u32 length and &[str]")
             }
 
-            fn visit_seq<V>(mut self, mut seq: V) -> Result<Self::Value, V::Error>
+            fn visit_seq<V>(self, seq: V) -> Result<Self::Value, V::Error>
             where
                 V: SeqAccess<'de>,
             {
+                let mut iter = SeqIter::new(seq);
                 let mut attrs = FileAttrs::default();
 
-                let flags = self.get_next(&mut seq)?;
+                let flags = iter.get_next()?;
 
                 attrs.flags = flags;
 
                 if (flags & constants::SSH_FILEXFER_ATTR_SIZE) != 0 {
-                    attrs.size = Some(self.get_next(&mut seq)?);
+                    attrs.size = Some(iter.get_next()?);
                 }
                 if (flags & constants::SSH_FILEXFER_ATTR_UIDGID) != 0 {
-                    attrs.id = Some((self.get_next(&mut seq)?, self.get_next(&mut seq)?));
+                    attrs.id = Some((iter.get_next()?, iter.get_next()?));
                 }
                 if (flags & constants::SSH_FILEXFER_ATTR_PERMISSIONS) != 0 {
-                    attrs.permissions = Some(self.get_next(&mut seq)?);
+                    attrs.permissions = Some(iter.get_next()?);
                 }
                 if (flags & constants::SSH_FILEXFER_ATTR_ACMODTIME) != 0 {
-                    attrs.time = Some((self.get_next(&mut seq)?, self.get_next(&mut seq)?));
+                    attrs.time = Some((iter.get_next()?, iter.get_next()?));
                 }
                 if (flags & constants::SSH_FILEXFER_ATTR_EXTENDED) != 0 {
-                    attrs.extensions = Some(self.get_next(&mut seq)?);
+                    attrs.extensions = Some(iter.get_next()?);
                 }
 
                 Ok(attrs)
             }
         }
 
-        deserializer.deserialize_tuple(1, FileAttrVisitor(0))
+        deserializer.deserialize_tuple(1, FileAttrVisitor)
     }
 }
