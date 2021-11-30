@@ -49,7 +49,7 @@ pub enum RequestInner<'a> {
     },
 
     /// Responds with a SSH_FXP_STATUS message.
-    Remove { filename: Cow<'a, Path> },
+    Remove(Cow<'a, Path>),
 
     /// Responds with a SSH_FXP_STATUS message.
     Rename {
@@ -73,12 +73,12 @@ pub enum RequestInner<'a> {
     Readdir(Cow<'a, Handle>),
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
-    Stat { path: Cow<'a, Path> },
+    Stat(Cow<'a, Path>),
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
     ///
     /// Does not follow symlink.
-    Lstat { path: Cow<'a, Path> },
+    Lstat(Cow<'a, Path>),
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
     Fstat(Cow<'a, Handle>),
@@ -97,7 +97,7 @@ pub enum RequestInner<'a> {
 
     /// Responds with SSH_FXP_NAME with a name and dummy attribute value
     /// or SSH_FXP_STATUS on error.
-    Readlink { path: Cow<'a, Path> },
+    Readlink(Cow<'a, Path>),
 
     /// Responds with SSH_FXP_STATUS.
     Symlink {
@@ -107,7 +107,7 @@ pub enum RequestInner<'a> {
 
     /// Responds with SSH_FXP_NAME with a name and dummy attribute value
     /// or SSH_FXP_STATUS on error.
-    Realpath { path: Cow<'a, Path> },
+    Realpath(Cow<'a, Path>),
 }
 
 #[derive(Debug)]
@@ -130,7 +130,7 @@ impl Serialize for Request<'_> {
                 len,
             } => (constants::SSH_FXP_READ, request_id, handle, *offset, *len).serialize(serializer),
 
-            Remove { filename } => {
+            Remove(filename) => {
                 (constants::SSH_FXP_REMOVE, request_id, filename).serialize(serializer)
             }
 
@@ -150,9 +150,9 @@ impl Serialize for Request<'_> {
                 (constants::SSH_FXP_READDIR, request_id, handle).serialize(serializer)
             }
 
-            Stat { path } => (constants::SSH_FXP_STAT, request_id, path).serialize(serializer),
+            Stat(path) => (constants::SSH_FXP_STAT, request_id, path).serialize(serializer),
 
-            Lstat { path } => (constants::SSH_FXP_LSTAT, request_id, path).serialize(serializer),
+            Lstat(path) => (constants::SSH_FXP_LSTAT, request_id, path).serialize(serializer),
 
             Fstat(handle) => (constants::SSH_FXP_FSTAT, request_id, handle).serialize(serializer),
 
@@ -164,9 +164,7 @@ impl Serialize for Request<'_> {
                 (constants::SSH_FXP_FSETSTAT, request_id, handle, attrs).serialize(serializer)
             }
 
-            Readlink { path } => {
-                (constants::SSH_FXP_READLINK, request_id, path).serialize(serializer)
-            }
+            Readlink(path) => (constants::SSH_FXP_READLINK, request_id, path).serialize(serializer),
 
             Symlink {
                 linkpath,
@@ -175,9 +173,7 @@ impl Serialize for Request<'_> {
                 (constants::SSH_FXP_SYMLINK, request_id, linkpath, targetpath).serialize(serializer)
             }
 
-            Realpath { path } => {
-                (constants::SSH_FXP_REALPATH, request_id, path).serialize(serializer)
-            }
+            Realpath(path) => (constants::SSH_FXP_REALPATH, request_id, path).serialize(serializer),
         }
     }
 }
