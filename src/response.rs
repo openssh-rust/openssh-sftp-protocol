@@ -167,7 +167,7 @@ impl<'de> Deserialize<'de> for Response {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum StatusCode {
     Success,
 
