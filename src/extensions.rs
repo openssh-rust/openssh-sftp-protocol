@@ -32,6 +32,7 @@ impl Extensions {
         }
     }
 
+    #[inline]
     pub fn add_extension(&mut self, name: &str, data: &str) {
         self.0.push(name);
         self.0.push(data);
