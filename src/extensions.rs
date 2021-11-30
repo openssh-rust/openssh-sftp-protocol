@@ -151,6 +151,7 @@ impl<'a> IntoIterator for &'a Extensions {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ExtensionsIter<'a>(StringsIter<'a>);
 
 impl<'a> Iterator for ExtensionsIter<'a> {
