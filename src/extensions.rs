@@ -167,7 +167,7 @@ mod tests {
     use super::Extensions;
 
     use once_cell::sync::OnceCell;
-    use serde_test::{assert_ser_tokens, assert_tokens, Token};
+    use serde_test::{assert_tokens, Token};
 
     #[test]
     fn test() {
