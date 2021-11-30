@@ -171,21 +171,25 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut strs = Extensions::default();
+        let mut extensions = Extensions::default();
         let input_strs: Vec<String> = (0..1024).map(|n| n.to_string()).collect();
 
-        assert!(strs.is_empty());
+        assert!(extensions.is_empty());
 
         for (i, input_str) in input_strs.iter().enumerate() {
-            strs.add_extension(input_str, input_str);
-            assert_eq!(strs.len() as usize, i + 1);
+            extensions.add_extension(input_str, input_str);
+            assert_eq!(extensions.len() as usize, i + 1);
         }
 
         for (i, input_str) in input_strs.iter().enumerate() {
             assert_eq!(
-                strs.get(i.try_into().unwrap()).unwrap(),
+                extensions.get(i.try_into().unwrap()).unwrap(),
                 (input_str.as_str(), input_str.as_str())
             );
+        }
+
+        for (input_str, each) in input_strs.iter().zip(extensions.iter()) {
+            assert_eq!(each, (input_str.as_str(), input_str.as_str()));
         }
     }
 
