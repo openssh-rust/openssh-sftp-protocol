@@ -1,4 +1,4 @@
-use super::{constants, extensions::Extensions, file::FileAttrs, seq_iter::*};
+use super::{constants, extensions::Extensions, file::FileAttrs, seq_iter::SeqIter};
 
 use core::fmt;
 
