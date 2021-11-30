@@ -1,7 +1,5 @@
 use super::{constants, extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
 
-use core::fmt;
-
 use serde::Serialize;
 
 #[derive(Debug, Default, Clone, Serialize)]

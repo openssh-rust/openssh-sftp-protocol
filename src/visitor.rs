@@ -17,7 +17,7 @@ macro_rules! impl_visitor {
                     fn expecting(
                         &self,
                         formatter: &mut crate::visitor::fmt::Formatter,
-                    ) -> fmt::Result {
+                    ) -> crate::visitor::fmt::Result {
                         write!(formatter, $expecting_msg)
                     }
 

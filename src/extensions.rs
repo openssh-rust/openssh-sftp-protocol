@@ -1,7 +1,6 @@
 use super::seq_iter::SeqIter;
 use super::visitor::impl_visitor;
 
-use core::fmt;
 use core::iter::{IntoIterator, Iterator};
 
 use serde::ser::{Serialize, SerializeTuple, Serializer};
