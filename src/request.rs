@@ -6,14 +6,25 @@ use std::path::Path;
 use bitflags::bitflags;
 use serde::{Serialize, Serializer};
 
+/// Response with `Response::Version`.
+pub struct Hello {
+    pub version: u32,
+    pub extensions: Extensions,
+}
+
+impl Serialize for Hello {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (
+            constants::SSH_FXP_INIT,
+            self.version,
+            self.extensions.get_strings().iter(),
+        )
+            .serialize(serializer)
+    }
+}
+
 #[derive(Debug)]
 pub enum Request<'a> {
-    /// Response with `Response::Version`.
-    Hello {
-        version: u32,
-        extensions: Extensions,
-    },
-
     /// The response to this message will be either SSH_FXP_HANDLE
     /// (if the operation is successful) or SSH_FXP_STATUS
     /// (if the operation fails).
@@ -142,16 +153,6 @@ impl Serialize for Request<'_> {
         use Request::*;
 
         match self {
-            Hello {
-                version,
-                extensions,
-            } => (
-                constants::SSH_FXP_INIT,
-                *version,
-                extensions.get_strings().iter(),
-            )
-                .serialize(serializer),
-
             Open { request_id, params } => {
                 (constants::SSH_FXP_OPEN, *request_id, params).serialize(serializer)
             }
