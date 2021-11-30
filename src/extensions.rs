@@ -9,6 +9,12 @@ pub use vec_strings::{Strings, StringsIter};
 #[derive(Debug, Default, Eq, PartialEq, Clone, Hash)]
 pub struct Extensions(Strings);
 
+impl From<Extensions> for Strings {
+    fn from(extensions: Extensions) -> Self {
+        extensions.into_strings()
+    }
+}
+
 impl Extensions {
     /// Return Some(...) if strs.len() is even.
     /// None otherwise.
