@@ -24,20 +24,14 @@ impl Serialize for Hello {
 }
 
 #[derive(Debug)]
-pub enum Request<'a> {
+pub enum RequestInner<'a> {
     /// The response to this message will be either SSH_FXP_HANDLE
     /// (if the operation is successful) or SSH_FXP_STATUS
     /// (if the operation fails).
-    Open {
-        request_id: u32,
-        params: OpenFile<'a>,
-    },
+    Open(OpenFile<'a>),
 
     /// Response will be SSH_FXP_STATUS.
-    Close {
-        request_id: u32,
-        handle: Cow<'a, [u8]>,
-    },
+    Close { handle: Cow<'a, [u8]> },
 
     /// In response to this request, the server will read as many bytes as it
     /// can from the file (up to `len'), and return them in a SSH_FXP_DATA
@@ -49,196 +43,144 @@ pub enum Request<'a> {
     ///
     /// For e.g. device files this may return fewer bytes than requested.
     Read {
-        request_id: u32,
         handle: Cow<'a, [u8]>,
         offset: u64,
         len: u32,
     },
 
     /// Responds with a SSH_FXP_STATUS message.
-    Remove {
-        request_id: u32,
-        filename: Cow<'a, Path>,
-    },
+    Remove { filename: Cow<'a, Path> },
 
     /// Responds with a SSH_FXP_STATUS message.
     Rename {
-        request_id: u32,
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,
     },
 
     /// Responds with a SSH_FXP_STATUS message.
     Mkdir {
-        request_id: u32,
         path: Cow<'a, Path>,
         attrs: FileAttrs,
     },
 
     /// Responds with a SSH_FXP_STATUS message.
-    Rmdir {
-        request_id: u32,
-        path: Cow<'a, Path>,
-    },
+    Rmdir(Cow<'a, Path>),
 
     /// Responds with a SSH_FXP_HANDLE or a SSH_FXP_STATUS message.
-    Opendir {
-        request_id: u32,
-        path: Cow<'a, Path>,
-    },
+    Opendir(Cow<'a, Path>),
 
     /// Responds with a SSH_FXP_NAME or a SSH_FXP_STATUS message
-    Readdir {
-        request_id: u32,
-        handle: Cow<'a, [u8]>,
-    },
+    Readdir { handle: Cow<'a, [u8]> },
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
-    Stat {
-        request_id: u32,
-        path: Cow<'a, Path>,
-    },
+    Stat { path: Cow<'a, Path> },
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
     ///
     /// Does not follow symlink.
-    Lstat {
-        request_id: u32,
-        path: Cow<'a, Path>,
-    },
+    Lstat { path: Cow<'a, Path> },
 
     /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
-    Fstat {
-        request_id: u32,
-        handle: Cow<'a, [u8]>,
-    },
+    Fstat { handle: Cow<'a, [u8]> },
 
     /// Responds with SSH_FXP_STATUS
     Setstat {
-        request_id: u32,
         path: Cow<'a, Path>,
         attrs: FileAttrs,
     },
 
     /// Responds with SSH_FXP_STATUS
     Fsetstat {
-        request_id: u32,
         handle: Cow<'a, [u8]>,
         attrs: FileAttrs,
     },
 
     /// Responds with SSH_FXP_NAME with a name and dummy attribute value
     /// or SSH_FXP_STATUS on error.
-    Readlink {
-        request_id: u32,
-        path: Cow<'a, Path>,
-    },
+    Readlink { path: Cow<'a, Path> },
 
     /// Responds with SSH_FXP_STATUS.
     Symlink {
-        request_id: u32,
         linkpath: Cow<'a, Path>,
         targetpath: Cow<'a, Path>,
     },
 
     /// Responds with SSH_FXP_NAME with a name and dummy attribute value
     /// or SSH_FXP_STATUS on error.
-    Realpath {
-        request_id: u32,
-        path: Cow<'a, Path>,
-    },
+    Realpath { path: Cow<'a, Path> },
+}
+
+#[derive(Debug)]
+pub struct Request<'a> {
+    request_id: u32,
+    inner: RequestInner<'a>,
 }
 impl Serialize for Request<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use Request::*;
+        use RequestInner::*;
 
-        match self {
-            Open { request_id, params } => {
-                (constants::SSH_FXP_OPEN, *request_id, params).serialize(serializer)
-            }
-            Close { request_id, handle } => {
-                (constants::SSH_FXP_CLOSE, *request_id, handle).serialize(serializer)
+        let request_id = self.request_id;
+
+        match &self.inner {
+            Open(params) => (constants::SSH_FXP_OPEN, request_id, params).serialize(serializer),
+            Close { handle } => {
+                (constants::SSH_FXP_CLOSE, request_id, handle).serialize(serializer)
             }
             Read {
-                request_id,
                 handle,
                 offset,
                 len,
-            } => {
-                (constants::SSH_FXP_READ, *request_id, handle, *offset, *len).serialize(serializer)
+            } => (constants::SSH_FXP_READ, request_id, handle, *offset, *len).serialize(serializer),
+
+            Remove { filename } => {
+                (constants::SSH_FXP_REMOVE, request_id, filename).serialize(serializer)
             }
 
-            Remove {
-                request_id,
-                filename,
-            } => (constants::SSH_FXP_REMOVE, *request_id, filename).serialize(serializer),
-
-            Rename {
-                request_id,
-                oldpath,
-                newpath,
-            } => (constants::SSH_FXP_RENAME, *request_id, oldpath, newpath).serialize(serializer),
-
-            Mkdir {
-                request_id,
-                path,
-                attrs,
-            } => (constants::SSH_FXP_MKDIR, *request_id, path, attrs).serialize(serializer),
-
-            Rmdir { request_id, path } => {
-                (constants::SSH_FXP_MKDIR, *request_id, path).serialize(serializer)
+            Rename { oldpath, newpath } => {
+                (constants::SSH_FXP_RENAME, request_id, oldpath, newpath).serialize(serializer)
             }
 
-            Opendir { request_id, path } => {
-                (constants::SSH_FXP_OPENDIR, *request_id, path).serialize(serializer)
+            Mkdir { path, attrs } => {
+                (constants::SSH_FXP_MKDIR, request_id, path, attrs).serialize(serializer)
             }
 
-            Readdir { request_id, handle } => {
-                (constants::SSH_FXP_READDIR, *request_id, handle).serialize(serializer)
+            Rmdir(path) => (constants::SSH_FXP_MKDIR, request_id, path).serialize(serializer),
+
+            Opendir(path) => (constants::SSH_FXP_OPENDIR, request_id, path).serialize(serializer),
+
+            Readdir { handle } => {
+                (constants::SSH_FXP_READDIR, request_id, handle).serialize(serializer)
             }
 
-            Stat { request_id, path } => {
-                (constants::SSH_FXP_STAT, *request_id, path).serialize(serializer)
+            Stat { path } => (constants::SSH_FXP_STAT, request_id, path).serialize(serializer),
+
+            Lstat { path } => (constants::SSH_FXP_LSTAT, request_id, path).serialize(serializer),
+
+            Fstat { handle } => {
+                (constants::SSH_FXP_FSTAT, request_id, handle).serialize(serializer)
             }
 
-            Lstat { request_id, path } => {
-                (constants::SSH_FXP_LSTAT, *request_id, path).serialize(serializer)
+            Setstat { path, attrs } => {
+                (constants::SSH_FXP_SETSTAT, request_id, path, attrs).serialize(serializer)
             }
 
-            Fstat { request_id, handle } => {
-                (constants::SSH_FXP_FSTAT, *request_id, handle).serialize(serializer)
+            Fsetstat { handle, attrs } => {
+                (constants::SSH_FXP_FSETSTAT, request_id, handle, attrs).serialize(serializer)
             }
 
-            Setstat {
-                request_id,
-                path,
-                attrs,
-            } => (constants::SSH_FXP_SETSTAT, *request_id, path, attrs).serialize(serializer),
-
-            Fsetstat {
-                request_id,
-                handle,
-                attrs,
-            } => (constants::SSH_FXP_FSETSTAT, *request_id, handle, attrs).serialize(serializer),
-
-            Readlink { request_id, path } => {
-                (constants::SSH_FXP_READLINK, *request_id, path).serialize(serializer)
+            Readlink { path } => {
+                (constants::SSH_FXP_READLINK, request_id, path).serialize(serializer)
             }
 
             Symlink {
-                request_id,
                 linkpath,
                 targetpath,
-            } => (
-                constants::SSH_FXP_SYMLINK,
-                *request_id,
-                linkpath,
-                targetpath,
-            )
-                .serialize(serializer),
+            } => {
+                (constants::SSH_FXP_SYMLINK, request_id, linkpath, targetpath).serialize(serializer)
+            }
 
-            Realpath { request_id, path } => {
-                (constants::SSH_FXP_REALPATH, *request_id, path).serialize(serializer)
+            Realpath { path } => {
+                (constants::SSH_FXP_REALPATH, request_id, path).serialize(serializer)
             }
         }
     }
