@@ -1,8 +1,7 @@
-use super::{constants, extensions::Extensions, seq_iter::SeqIter};
+use super::{constants, extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
 
 use core::fmt;
 
-use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::Serialize;
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -87,49 +86,29 @@ impl FileAttrs {
     }
 }
 
-/// This implementation is only usuable for ssh_format::Deserializer
-impl<'de> Deserialize<'de> for FileAttrs {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct FileAttrVisitor;
+impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
+    let mut iter = SeqIter::new(seq);
+    let mut attrs = FileAttrs::default();
 
-        impl<'de> Visitor<'de> for FileAttrVisitor {
-            type Value = FileAttrs;
+    let flags = iter.get_next()?;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "A u32 length and &[str]")
-            }
+    attrs.flags = flags;
 
-            fn visit_seq<V>(self, seq: V) -> Result<Self::Value, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                let mut iter = SeqIter::new(seq);
-                let mut attrs = FileAttrs::default();
-
-                let flags = iter.get_next()?;
-
-                attrs.flags = flags;
-
-                if (flags & constants::SSH_FILEXFER_ATTR_SIZE) != 0 {
-                    attrs.size = Some(iter.get_next()?);
-                }
-                if (flags & constants::SSH_FILEXFER_ATTR_UIDGID) != 0 {
-                    attrs.id = Some((iter.get_next()?, iter.get_next()?));
-                }
-                if (flags & constants::SSH_FILEXFER_ATTR_PERMISSIONS) != 0 {
-                    attrs.permissions = Some(iter.get_next()?);
-                }
-                if (flags & constants::SSH_FILEXFER_ATTR_ACMODTIME) != 0 {
-                    attrs.time = Some((iter.get_next()?, iter.get_next()?));
-                }
-                if (flags & constants::SSH_FILEXFER_ATTR_EXTENDED) != 0 {
-                    attrs.extensions = Some(iter.get_next()?);
-                }
-
-                Ok(attrs)
-            }
-        }
-
-        deserializer.deserialize_tuple(1, FileAttrVisitor)
+    if (flags & constants::SSH_FILEXFER_ATTR_SIZE) != 0 {
+        attrs.size = Some(iter.get_next()?);
     }
-}
+    if (flags & constants::SSH_FILEXFER_ATTR_UIDGID) != 0 {
+        attrs.id = Some((iter.get_next()?, iter.get_next()?));
+    }
+    if (flags & constants::SSH_FILEXFER_ATTR_PERMISSIONS) != 0 {
+        attrs.permissions = Some(iter.get_next()?);
+    }
+    if (flags & constants::SSH_FILEXFER_ATTR_ACMODTIME) != 0 {
+        attrs.time = Some((iter.get_next()?, iter.get_next()?));
+    }
+    if (flags & constants::SSH_FILEXFER_ATTR_EXTENDED) != 0 {
+        attrs.extensions = Some(iter.get_next()?);
+    }
+
+    Ok(attrs)
+});
