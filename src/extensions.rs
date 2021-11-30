@@ -39,6 +39,10 @@ impl Extensions {
         self.0.shrink_to_fit();
         self.0.shrink_to_fit();
     }
+
+    pub fn get_extension(&self, index: u32) -> Option<(&str, &str)> {
+        Some((self.0.get(index * 2)?, self.0.get(index * 2 + 1).unwrap()))
+    }
 }
 
 impl Deref for Extensions {
