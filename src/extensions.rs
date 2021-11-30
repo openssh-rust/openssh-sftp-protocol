@@ -1,6 +1,7 @@
+use core::fmt;
 use core::iter::{IntoIterator, Iterator};
 
-use serde::de::{Deserialize, Deserializer, Error};
+use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor};
 use serde::Serialize;
 
 pub use vec_strings::{Strings, StringsIter};
@@ -79,12 +80,48 @@ impl Extensions {
 
 impl<'de> Deserialize<'de> for Extensions {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let strs = Strings::deserialize(deserializer)?;
+        struct ExtensionsVisitor(usize);
 
-        let len = strs.len() as usize;
+        impl ExtensionsVisitor {
+            fn get_next<'de, T, V>(&mut self, seq: &mut V) -> Result<T, V::Error>
+            where
+                T: Deserialize<'de>,
+                V: SeqAccess<'de>,
+            {
+                let res = seq
+                    .next_element()?
+                    .ok_or_else(|| Error::invalid_length(self.0, self));
+                self.0 += 1;
+                res
+            }
+        }
 
-        Extensions::new(strs)
-            .ok_or_else(|| Error::invalid_length(len, &"Expected even number of strings"))
+        impl<'de> Visitor<'de> for ExtensionsVisitor {
+            type Value = Extensions;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "A u32 length and &[str]")
+            }
+
+            fn visit_seq<V>(mut self, mut seq: V) -> Result<Self::Value, V::Error>
+            where
+                V: SeqAccess<'de>,
+            {
+                let len: u32 = self.get_next(&mut seq)?;
+
+                let mut extensions = Extensions::default();
+                extensions.reserve(len as usize);
+
+                for _ in 0..len {
+                    extensions.add_extension(self.get_next(&mut seq)?, self.get_next(&mut seq)?);
+                }
+
+                Ok(extensions)
+            }
+        }
+
+        // dummy size here since ssh_format doesn't care
+        deserializer.deserialize_tuple(2, ExtensionsVisitor(0))
     }
 }
 
