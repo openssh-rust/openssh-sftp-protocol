@@ -161,3 +161,72 @@ impl<'a> Iterator for ExtensionsIter<'a> {
         Some((self.0.next()?, self.0.next().unwrap()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Extensions;
+
+    use once_cell::sync::OnceCell;
+    use serde_test::{assert_ser_tokens, assert_tokens, Token};
+
+    // Test using serde_test
+
+    #[test]
+    fn test_ser_de_empty_serde() {
+        assert_tokens(
+            &Extensions::default(),
+            &[Token::Tuple { len: 1 }, Token::U32(0), Token::TupleEnd],
+        );
+    }
+
+    fn assert_ser_de_serde(extensions: &'static Extensions) {
+        // Test Extensions
+        let mut tokens = vec![
+            Token::Tuple {
+                len: 1 + (extensions.len() as usize) * 2,
+            },
+            Token::U32(extensions.len().try_into().unwrap()),
+        ];
+
+        for (name, data) in extensions {
+            tokens.push(Token::BorrowedStr(name));
+            tokens.push(Token::BorrowedStr(data));
+        }
+
+        tokens.push(Token::TupleEnd);
+
+        assert_tokens(extensions, &tokens);
+    }
+
+    fn get_extensions() -> &'static Extensions {
+        static STRINGS: OnceCell<Extensions> = OnceCell::new();
+
+        STRINGS.get_or_init(|| {
+            let mut extensions = Extensions::default();
+            for i in 0..1024 {
+                extensions.add_extension(&i.to_string(), &(i + 20).to_string());
+            }
+            extensions
+        })
+    }
+
+    #[test]
+    fn test_ser_de_serde() {
+        assert_ser_de_serde(get_extensions());
+    }
+
+    // Test using serde_json
+
+    fn assert_ser_de_json(extensions: &Extensions) {
+        assert_eq!(
+            serde_json::from_str::<'_, Extensions>(&serde_json::to_string(extensions).unwrap())
+                .unwrap(),
+            *extensions
+        );
+    }
+
+    #[test]
+    fn test_ser_de_serde_json() {
+        assert_ser_de_json(get_extensions());
+    }
+}
