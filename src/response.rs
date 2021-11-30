@@ -8,6 +8,7 @@ use ssh_format::from_bytes;
 
 use vec_strings::Strings;
 
+#[derive(Debug, Clone)]
 pub struct ServerVersion {
     pub version: u32,
     pub extensions: Extensions,
