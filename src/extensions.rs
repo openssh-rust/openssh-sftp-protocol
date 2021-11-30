@@ -1,7 +1,9 @@
+use super::seq_iter::SeqIter;
+
 use core::fmt;
 use core::iter::{IntoIterator, Iterator};
 
-use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor};
+use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
 pub use vec_strings::{Strings, StringsIter};
@@ -97,21 +99,7 @@ impl Serialize for Extensions {
 
 impl<'de> Deserialize<'de> for Extensions {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ExtensionsVisitor(usize);
-
-        impl ExtensionsVisitor {
-            fn get_next<'de, T, V>(&mut self, seq: &mut V) -> Result<T, V::Error>
-            where
-                T: Deserialize<'de>,
-                V: SeqAccess<'de>,
-            {
-                let res = seq
-                    .next_element()?
-                    .ok_or_else(|| Error::invalid_length(self.0, self));
-                self.0 += 1;
-                res
-            }
-        }
+        struct ExtensionsVisitor;
 
         impl<'de> Visitor<'de> for ExtensionsVisitor {
             type Value = Extensions;
@@ -120,17 +108,19 @@ impl<'de> Deserialize<'de> for Extensions {
                 write!(formatter, "A u32 length and &[str]")
             }
 
-            fn visit_seq<V>(mut self, mut seq: V) -> Result<Self::Value, V::Error>
+            fn visit_seq<V>(self, seq: V) -> Result<Self::Value, V::Error>
             where
                 V: SeqAccess<'de>,
             {
-                let len: u32 = self.get_next(&mut seq)?;
+                let mut iter = SeqIter::new(seq);
+
+                let len: u32 = iter.get_next()?;
 
                 let mut extensions = Extensions::default();
                 extensions.reserve(len as usize);
 
                 for _ in 0..len {
-                    extensions.add_extension(self.get_next(&mut seq)?, self.get_next(&mut seq)?);
+                    extensions.add_extension(iter.get_next()?, iter.get_next()?);
                 }
 
                 Ok(extensions)
@@ -138,7 +128,7 @@ impl<'de> Deserialize<'de> for Extensions {
         }
 
         // dummy size here since ssh_format doesn't care
-        deserializer.deserialize_tuple(2, ExtensionsVisitor(0))
+        deserializer.deserialize_tuple(2, ExtensionsVisitor)
     }
 }
 
