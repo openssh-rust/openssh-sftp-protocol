@@ -145,7 +145,12 @@ impl Serialize for Request<'_> {
             Hello {
                 version,
                 extensions,
-            } => (constants::SSH_FXP_INIT, *version, extensions.iter()).serialize(serializer),
+            } => (
+                constants::SSH_FXP_INIT,
+                *version,
+                extensions.get_strings().iter(),
+            )
+                .serialize(serializer),
 
             Open { request_id, params } => {
                 (constants::SSH_FXP_OPEN, *request_id, params).serialize(serializer)

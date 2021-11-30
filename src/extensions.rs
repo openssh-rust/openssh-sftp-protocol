@@ -1,5 +1,4 @@
-use core::iter::Iterator;
-use core::ops::Deref;
+use core::iter::{IntoIterator, Iterator};
 
 use serde::de::{Deserialize, Deserializer, Error};
 use serde::Serialize;
@@ -41,15 +40,35 @@ impl Extensions {
         self.0.shrink_to_fit();
     }
 
-    pub fn get_extension(&self, index: u32) -> Option<(&str, &str)> {
+    #[inline(always)]
+    pub fn get(&self, index: u32) -> Option<(&str, &str)> {
         Some((self.0.get(index * 2)?, self.0.get(index * 2 + 1).unwrap()))
     }
-}
 
-impl Deref for Extensions {
-    type Target = Strings;
+    /// Accumulate length of all strings.
+    #[inline(always)]
+    pub fn strs_len(&self) -> u32 {
+        self.0.strs_len()
+    }
 
-    fn deref(&self) -> &Self::Target {
+    #[inline(always)]
+    pub fn len(&self) -> u32 {
+        self.0.len() / 2
+    }
+
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline(always)]
+    pub fn iter(&self) -> ExtensionsIter<'_> {
+        ExtensionsIter(self.0.iter())
+    }
+
+    /// Return the underlying Strings
+    #[inline(always)]
+    pub fn get_strings(&self) -> &Strings {
         &self.0
     }
 }
@@ -62,6 +81,16 @@ impl<'de> Deserialize<'de> for Extensions {
 
         Extensions::new(strs)
             .ok_or_else(|| Error::invalid_length(len, &"Expected even number of strings"))
+    }
+}
+
+impl<'a> IntoIterator for &'a Extensions {
+    type Item = (&'a str, &'a str);
+    type IntoIter = ExtensionsIter<'a>;
+
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
