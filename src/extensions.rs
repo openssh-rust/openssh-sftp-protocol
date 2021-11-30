@@ -152,19 +152,19 @@ mod tests {
         assert!(extensions.is_empty());
 
         for (i, input_str) in input_strs.iter().enumerate() {
-            extensions.add_extension(input_str, input_str);
+            extensions.add_extension(input_str, "1");
             assert_eq!(extensions.len() as usize, i + 1);
         }
 
         for (i, input_str) in input_strs.iter().enumerate() {
             assert_eq!(
                 extensions.get(i.try_into().unwrap()).unwrap(),
-                (input_str.as_str(), input_str.as_str())
+                (input_str.as_str(), "1")
             );
         }
 
         for (input_str, each) in input_strs.iter().zip(extensions.iter()) {
-            assert_eq!(each, (input_str.as_str(), input_str.as_str()));
+            assert_eq!(each, (input_str.as_str(), "1"));
         }
     }
 
