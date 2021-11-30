@@ -37,7 +37,7 @@ impl ServerVersion {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ResponseInner {
     Status {
         status_code: StatusCode,
@@ -60,7 +60,7 @@ pub enum ResponseInner {
     Attrs(FileAttrs),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Response {
     pub response_id: u32,
     pub response_inner: ResponseInner,
