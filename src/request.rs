@@ -112,8 +112,8 @@ pub enum RequestInner<'a> {
 
 #[derive(Debug)]
 pub struct Request<'a> {
-    request_id: u32,
-    inner: RequestInner<'a>,
+    pub request_id: u32,
+    pub inner: RequestInner<'a>,
 }
 impl Serialize for Request<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
