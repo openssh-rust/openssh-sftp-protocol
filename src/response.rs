@@ -147,8 +147,8 @@ impl_visitor!(
 pub enum ErrorCode {
     /// Indicates end-of-file condition.
     ///
-    /// For SSH_FX_READ it means that no more data is available in the file,
-    /// and for SSH_FX_READDIR it indicates that no more files are contained
+    /// For RequestInner::Read it means that no more data is available in the file,
+    /// and for RequestInner::Readdir it indicates that no more files are contained
     /// in the directory.
     Eof,
 
