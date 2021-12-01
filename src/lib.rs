@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub extern crate serde;
 pub extern crate ssh_format;
 pub extern crate vec_strings;
 
