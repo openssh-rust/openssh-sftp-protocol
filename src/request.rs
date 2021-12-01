@@ -25,18 +25,20 @@ impl Serialize for Hello {
 
 #[derive(Debug)]
 pub enum RequestInner<'a> {
-    /// The response to this message will be either SSH_FXP_HANDLE
-    /// (if the operation is successful) or SSH_FXP_STATUS
+    /// The response to this message will be either ResponseInner::Handle
+    /// (if the operation is successful) or ResponseInner::Status
     /// (if the operation fails).
     Open(OpenFile<'a>),
 
-    /// Response will be SSH_FXP_STATUS.
+    /// Response will be RequestInner::Status.
     Close(Cow<'a, Handle>),
 
     /// In response to this request, the server will read as many bytes as it
-    /// can from the file (up to `len'), and return them in a SSH_FXP_DATA
-    /// message.  If an error occurs or EOF is encountered before reading any
-    /// data, the server will respond with SSH_FXP_STATUS.
+    /// can from the file (up to `len'), and return them in a ResponseInner::Data
+    /// message.
+    ///
+    /// If an error occurs or EOF is encountered before reading any
+    /// data, the server will respond with ResponseInner::Status.
     ///
     /// For normal disk files, it is guaranteed that this will read the specified
     /// number of bytes, or up to end of file.
@@ -48,65 +50,65 @@ pub enum RequestInner<'a> {
         len: u32,
     },
 
-    /// Responds with a SSH_FXP_STATUS message.
+    /// Responds with a ResponseInner::Status message.
     Remove(Cow<'a, Path>),
 
-    /// Responds with a SSH_FXP_STATUS message.
+    /// Responds with a ResponseInner::Status message.
     Rename {
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,
     },
 
-    /// Responds with a SSH_FXP_STATUS message.
+    /// Responds with a ResponseInner::Status message.
     Mkdir {
         path: Cow<'a, Path>,
         attrs: FileAttrs,
     },
 
-    /// Responds with a SSH_FXP_STATUS message.
+    /// Responds with a ResponseInner::Status message.
     Rmdir(Cow<'a, Path>),
 
-    /// Responds with a SSH_FXP_HANDLE or a SSH_FXP_STATUS message.
+    /// Responds with a ResponseInner::Handle or a ResponseInner::Status message.
     Opendir(Cow<'a, Path>),
 
-    /// Responds with a SSH_FXP_NAME or a SSH_FXP_STATUS message
+    /// Responds with a ResponseInner::Name or a ResponseInner::Status message
     Readdir(Cow<'a, Handle>),
 
-    /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
+    /// Responds with ResponseInner::Attrs or ResponseInner::Status.
     Stat(Cow<'a, Path>),
 
-    /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
+    /// Responds with ResponseInner::Attrs or ResponseInner::Status.
     ///
     /// Does not follow symlink.
     Lstat(Cow<'a, Path>),
 
-    /// Responds with SSH_FXP_ATTRS or SSH_FXP_STATUS.
+    /// Responds with ResponseInner::Attrs or ResponseInner::Status.
     Fstat(Cow<'a, Handle>),
 
-    /// Responds with SSH_FXP_STATUS
+    /// Responds with ResponseInner::Status.
     Setstat {
         path: Cow<'a, Path>,
         attrs: FileAttrs,
     },
 
-    /// Responds with SSH_FXP_STATUS
+    /// Responds with ResponseInner::Status.
     Fsetstat {
         handle: Cow<'a, Handle>,
         attrs: FileAttrs,
     },
 
-    /// Responds with SSH_FXP_NAME with a name and dummy attribute value
-    /// or SSH_FXP_STATUS on error.
+    /// Responds with ResponseInner::Name with a name and dummy attribute value
+    /// or ResponseInner::Status on error.
     Readlink(Cow<'a, Path>),
 
-    /// Responds with SSH_FXP_STATUS.
+    /// Responds with ResponseInner::Status.
     Symlink {
         linkpath: Cow<'a, Path>,
         targetpath: Cow<'a, Path>,
     },
 
-    /// Responds with SSH_FXP_NAME with a name and dummy attribute value
-    /// or SSH_FXP_STATUS on error.
+    /// Responds with ResponseInner::Name with a name and dummy attribute value
+    /// or ResponseInner::Status on error.
     Realpath(Cow<'a, Path>),
 }
 
@@ -225,7 +227,7 @@ bitflags! {
 
     pub struct CreateFlags: u32 {
         /// Forces an existing file with the same name to be truncated to zero
-        /// length when creating a file by specifying Create.
+        /// length when creating a file by using `OpenFile::create`.
         const TRUNC = constants::SSH_FXF_TRUNC;
 
         /// Causes the request to fail if the named file already exists.
