@@ -17,7 +17,7 @@ macro_rules! def_str_constants {
 }
 
 // version
-pub const SSH2_FILEXFER_VERSION: u8 = 3;
+pub const SSH2_FILEXFER_VERSION: u32 = 3;
 
 // client to server
 def_packet_type!(SSH_FXP_INIT, 1);
