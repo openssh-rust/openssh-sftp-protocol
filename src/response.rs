@@ -144,9 +144,7 @@ impl_visitor!(
 );
 
 #[derive(Debug, Copy, Clone)]
-pub enum StatusCode {
-    Success,
-
+pub enum ErrorCode {
     /// Indicates end-of-file condition.
     ///
     /// For SSH_FX_READ it means that no more data is available in the file,
@@ -176,21 +174,27 @@ pub enum StatusCode {
     /// is not supported for the server.
     OpUnsupported,
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum StatusCode {
+    Success,
+    Failure(ErrorCode),
+}
 impl<'de> Deserialize<'de> for StatusCode {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use constants::*;
-        use StatusCode::*;
+        use ErrorCode::*;
 
         let discriminant = <u32 as Deserialize>::deserialize(deserializer)?;
 
         match discriminant {
-            SSH_FX_OK => Ok(Success),
-            SSH_FX_EOF => Ok(Eof),
-            SSH_FX_NO_SUCH_FILE => Ok(NoSuchFile),
-            SSH_FX_PERMISSION_DENIED => Ok(PermDenied),
-            SSH_FX_FAILURE => Ok(Failure),
-            SSH_FX_BAD_MESSAGE => Ok(BadMessage),
-            SSH_FX_OP_UNSUPPORTED => Ok(OpUnsupported),
+            SSH_FX_OK => Ok(StatusCode::Success),
+            SSH_FX_EOF => Ok(StatusCode::Failure(Eof)),
+            SSH_FX_NO_SUCH_FILE => Ok(StatusCode::Failure(NoSuchFile)),
+            SSH_FX_PERMISSION_DENIED => Ok(StatusCode::Failure(PermDenied)),
+            SSH_FX_FAILURE => Ok(StatusCode::Failure(Failure)),
+            SSH_FX_BAD_MESSAGE => Ok(StatusCode::Failure(BadMessage)),
+            SSH_FX_OP_UNSUPPORTED => Ok(StatusCode::Failure(OpUnsupported)),
 
             SSH_FX_NO_CONNECTION | SSH_FX_CONNECTION_LOST => Err(Error::invalid_value(
                 Unexpected::Unsigned(discriminant as u64),
