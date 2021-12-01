@@ -209,7 +209,7 @@ impl<'de> Deserialize<'de> for StatusCode {
 /// Entry in ResponseInner::Name
 #[derive(Debug, Deserialize, Clone)]
 pub struct NameEntry {
-    filename: Box<str>,
+    pub filename: Box<str>,
 
     /// The format of the `longname' field is unspecified by this protocol.
     ///
@@ -224,6 +224,6 @@ pub struct NameEntry {
     ///
     /// -rwxr-xr-x   1 mjos     staff      348911 Mar 25 14:29 t-filexfer
     /// 1234567890 123 12345678 12345678 12345678 123456789012
-    longname: Box<str>,
-    attrs: FileAttrs,
+    pub longname: Box<str>,
+    pub attrs: FileAttrs,
 }
