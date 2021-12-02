@@ -65,20 +65,16 @@ pub struct Response {
 }
 
 impl Response {
-    /// * `packet_len` - total length of the packet, MUST NOT include the packet_type.
-    ///
-    /// Return Some(header_len) where header_len does not include
-    /// the packet_type.
-    /// Length of the body equals to packet_len - header_len.
-    ///
-    /// Return None if packet_type is invalid
-    pub fn len_of_header(packet_len: usize, packet_type: u8) -> Option<usize> {
+    /// Return Some(true) if the packet is data,
+    /// Some(false) if not,
+    /// None if it isn't a valid response.
+    pub fn is_data(packet_type: u8) -> Option<bool> {
         use constants::*;
 
         match packet_type {
-            SSH_FXP_STATUS | SSH_FXP_HANDLE | SSH_FXP_NAME | SSH_FXP_ATTRS => Some(packet_len),
+            SSH_FXP_STATUS | SSH_FXP_HANDLE | SSH_FXP_NAME | SSH_FXP_ATTRS => Some(false),
 
-            SSH_FXP_DATA => Some(4),
+            SSH_FXP_DATA => Some(true),
 
             _ => None,
         }
