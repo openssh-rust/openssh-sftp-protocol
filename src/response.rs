@@ -68,16 +68,8 @@ impl Response {
     /// Return Some(true) if the packet is data,
     /// Some(false) if not,
     /// None if it isn't a valid response.
-    pub fn is_data(packet_type: u8) -> Option<bool> {
-        use constants::*;
-
-        match packet_type {
-            SSH_FXP_STATUS | SSH_FXP_HANDLE | SSH_FXP_NAME | SSH_FXP_ATTRS => Some(false),
-
-            SSH_FXP_DATA => Some(true),
-
-            _ => None,
-        }
+    pub fn is_data(packet_type: u8) -> bool {
+        packet_type == constants::SSH_FXP_DATA
     }
 }
 
