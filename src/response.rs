@@ -44,11 +44,7 @@ pub enum ResponseInner {
     Status {
         status_code: StatusCode,
 
-        /// ISO-10646 UTF-8 [RFC-2279]
-        err_msg: Box<str>,
-
-        /// [RFC-1766]
-        language_tag: Box<str>,
+        err_msg: ErrMsg,
     },
 
     Handle(HandleOwned),
@@ -107,7 +103,6 @@ impl_visitor!(
             SSH_FXP_STATUS => Status {
                 status_code: iter.get_next()?,
                 err_msg: iter.get_next()?,
-                language_tag: iter.get_next()?,
             },
 
             SSH_FXP_HANDLE => Handle(iter.get_next()?),
@@ -208,6 +203,15 @@ impl<'de> Deserialize<'de> for StatusCode {
             )),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ErrMsg {
+    /// ISO-10646 UTF-8 [RFC-2279]
+    err_msg: Box<str>,
+
+    /// [RFC-1766]
+    language_tag: Box<str>,
 }
 
 /// Entry in ResponseInner::Name
