@@ -207,7 +207,6 @@ impl<'de> Deserialize<'de> for StatusCode {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ErrMsg {
-    /// ISO-10646 UTF-8 [RFC-2279]
     err_msg: Box<str>,
 
     /// [RFC-1766]
