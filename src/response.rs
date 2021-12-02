@@ -1,6 +1,6 @@
 use super::{
-    constants, extensions::Extensions, file::FileAttrs, seq_iter::SeqIter, visitor::impl_visitor,
-    HandleOwned,
+    constants, extensions::Extensions, file_attrs::FileAttrs, seq_iter::SeqIter,
+    visitor::impl_visitor, HandleOwned,
 };
 
 use serde::de::{Deserializer, Error, Unexpected};

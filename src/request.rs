@@ -1,4 +1,4 @@
-use super::{constants, extensions::Extensions, file::FileAttrs, Handle};
+use super::{constants, extensions::Extensions, file_attrs::FileAttrs, Handle};
 
 use std::borrow::Cow;
 use std::path::Path;
