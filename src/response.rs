@@ -211,6 +211,11 @@ pub struct ErrMsg {
     err_msg: Box<str>,
 
     /// [RFC-1766]
+    ///
+    /// This tag can be parsed by
+    /// [pyfisch/rust-language-tags](https://github.com/pyfisch/rust-language-tags)
+    /// according to
+    /// [this issue](https://github.com/pyfisch/rust-language-tags/issues/39).
     language_tag: Box<str>,
 }
 
