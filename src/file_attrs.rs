@@ -186,4 +186,28 @@ mod tests {
         attrs.set_id(0, 1000);
         assert_eq!(attrs.get_id().unwrap(), (0, 1000));
     }
+
+    #[test]
+    fn test_set_get_permissions() {
+        let mut attrs = FileAttrs::default();
+        attrs.set_permissions(0x102);
+        assert_eq!(attrs.get_permissions().unwrap(), 0x102);
+    }
+
+    #[test]
+    fn test_set_get_time() {
+        let mut attrs = FileAttrs::default();
+        attrs.set_time(2, 150);
+        assert_eq!(attrs.get_time().unwrap(), (2, 150));
+    }
+
+    #[test]
+    fn test_set_get_extensions() {
+        let extensions = get_extensions();
+
+        let mut attrs = FileAttrs::default();
+        attrs.set_extensions(extensions.clone());
+        assert_eq!(attrs.get_extensions().unwrap(), &extensions);
+        assert_eq!(attrs.get_extensions_mut().unwrap(), &extensions);
+    }
 }
