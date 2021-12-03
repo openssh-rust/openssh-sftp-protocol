@@ -55,7 +55,7 @@ pub enum ResponseInner {
 
     Name(Box<[NameEntry]>),
 
-    Attrs(FileAttrs),
+    Attrs(Box<FileAttrs>),
 }
 
 #[derive(Debug, Clone)]
