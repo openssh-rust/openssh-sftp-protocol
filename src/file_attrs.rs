@@ -116,8 +116,9 @@ impl Serialize for FileAttrs {
             tuple_serializer.serialize_element(&size)?;
         }
 
-        if let Some(id) = self.get_id() {
-            tuple_serializer.serialize_element(&id)?;
+        if let Some((uid, gid)) = self.get_id() {
+            tuple_serializer.serialize_element(&uid)?;
+            tuple_serializer.serialize_element(&gid)?;
         }
 
         if let Some(perm) = self.get_permissions() {
