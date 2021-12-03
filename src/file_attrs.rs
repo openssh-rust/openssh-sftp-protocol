@@ -321,4 +321,44 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn test_ser_de_all() {
+        let mut extensions = Extensions::default();
+        extensions.add_extension("1", "@");
+
+        assert_tokens(
+            &init_attrs(|attrs| {
+                attrs.set_size(2333);
+                attrs.set_id(u32::MAX, 1000);
+                attrs.set_permissions(0x102);
+                attrs.set_time(2, 150);
+                attrs.set_extensions(extensions);
+            }),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(
+                    SSH_FILEXFER_ATTR_SIZE
+                        | SSH_FILEXFER_ATTR_UIDGID
+                        | SSH_FILEXFER_ATTR_PERMISSIONS
+                        | SSH_FILEXFER_ATTR_ACMODTIME
+                        | SSH_FILEXFER_ATTR_EXTENDED,
+                ),
+                Token::U64(2333),     // size
+                Token::U32(u32::MAX), // uid
+                Token::U32(1000),     // gid
+                Token::U32(0x102),    // permissions
+                Token::U32(2),        // atime
+                Token::U32(150),      // mtime
+                // Start of extensions
+                Token::Tuple { len: 3 },
+                Token::U32(1),
+                Token::BorrowedStr("1"),
+                Token::BorrowedStr("@"),
+                Token::TupleEnd,
+                // End of extensions
+                Token::TupleEnd,
+            ],
+        );
+    }
 }
