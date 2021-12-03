@@ -183,8 +183,8 @@ mod tests {
     #[test]
     fn test_set_get_id() {
         let mut attrs = FileAttrs::default();
-        attrs.set_id(0, 1000);
-        assert_eq!(attrs.get_id().unwrap(), (0, 1000));
+        attrs.set_id(u32::MAX, 1000);
+        assert_eq!(attrs.get_id().unwrap(), (u32::MAX, 1000));
     }
 
     #[test]
