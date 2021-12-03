@@ -183,6 +183,13 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
 mod tests {
     use super::{Extensions, FileAttrs};
 
+    use super::{
+        SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
+        SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
+    };
+
+    // Test getter and setters
+
     fn get_extensions() -> Extensions {
         let mut extensions = Extensions::default();
         for i in 0..100 {
@@ -227,5 +234,91 @@ mod tests {
         attrs.set_extensions(extensions.clone());
         assert_eq!(attrs.get_extensions().unwrap(), &extensions);
         assert_eq!(attrs.get_extensions_mut().unwrap(), &extensions);
+    }
+
+    // Test Serialize and Deserialize
+
+    use serde_test::{assert_tokens, Token};
+
+    fn init_attrs(f: impl FnOnce(&mut FileAttrs)) -> FileAttrs {
+        let mut attrs = FileAttrs::default();
+        f(&mut attrs);
+        attrs
+    }
+
+    #[test]
+    fn test_ser_de_size() {
+        assert_tokens(
+            &init_attrs(|attrs| attrs.set_size(2333)),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(SSH_FILEXFER_ATTR_SIZE),
+                Token::U64(2333),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_ser_de_id() {
+        assert_tokens(
+            &init_attrs(|attrs| attrs.set_id(u32::MAX, 1000)),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(SSH_FILEXFER_ATTR_UIDGID),
+                Token::U32(u32::MAX),
+                Token::U32(1000),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_ser_de_permissions() {
+        assert_tokens(
+            &init_attrs(|attrs| attrs.set_permissions(0x102)),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(SSH_FILEXFER_ATTR_PERMISSIONS),
+                Token::U32(0x102),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_ser_de_time() {
+        assert_tokens(
+            &init_attrs(|attrs| attrs.set_time(2, 150)),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(SSH_FILEXFER_ATTR_ACMODTIME),
+                Token::U32(2),
+                Token::U32(150),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_ser_de_extensions() {
+        let mut extensions = Extensions::default();
+        extensions.add_extension("1", "@");
+
+        assert_tokens(
+            &init_attrs(|attrs| attrs.set_extensions(extensions)),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(SSH_FILEXFER_ATTR_EXTENDED),
+                // Start of extensions
+                Token::Tuple { len: 3 },
+                Token::U32(1),
+                Token::BorrowedStr("1"),
+                Token::BorrowedStr("@"),
+                Token::TupleEnd,
+                // End of extensions
+                Token::TupleEnd,
+            ],
+        );
     }
 }
