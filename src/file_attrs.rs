@@ -29,6 +29,18 @@ pub struct FileAttrs {
     extensions: Extensions,
 }
 
+impl PartialEq for FileAttrs {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_size() == other.get_size()
+            && self.get_id() == other.get_id()
+            && self.get_permissions() == other.get_permissions()
+            && self.get_time() == other.get_time()
+            && self.get_extensions() == other.get_extensions()
+    }
+}
+
+impl Eq for FileAttrs {}
+
 impl FileAttrs {
     #[inline]
     pub fn new() -> Self {
