@@ -124,6 +124,11 @@ impl Serialize for FileAttrs {
             tuple_serializer.serialize_element(&perm)?;
         }
 
+        if let Some((atime, mtime)) = self.get_time() {
+            tuple_serializer.serialize_element(&atime)?;
+            tuple_serializer.serialize_element(&mtime)?;
+        }
+
         if let Some(extensions) = self.get_extensions() {
             tuple_serializer.serialize_element(&extensions)?;
         }
