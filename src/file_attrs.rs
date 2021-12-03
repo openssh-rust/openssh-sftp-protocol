@@ -160,7 +160,7 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
         attrs.mtime = iter.get_next()?;
         attrs.atime = iter.get_next()?;
     }
-    if (flags & SSH_FILEXFER_ATTR_EXTENDED) != 0 {
+    if attrs.has_attr(SSH_FILEXFER_ATTR_EXTENDED) {
         attrs.extensions = iter.get_next()?;
     }
 
