@@ -5,18 +5,18 @@ use core::iter::{IntoIterator, Iterator};
 
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
-pub use vec_strings::{Strings, StringsIter};
+pub use vec_strings::{StringsNoIndex, StringsNoIndexIter};
 
 #[derive(Debug, Default, Eq, PartialEq, Clone, Hash)]
-pub struct Extensions(Strings);
+pub struct Extensions(StringsNoIndex);
 
-impl From<Extensions> for Strings {
+impl From<Extensions> for StringsNoIndex {
     fn from(extensions: Extensions) -> Self {
         extensions.into_strings()
     }
 }
 
-impl<'a> From<&'a Extensions> for &'a Strings {
+impl<'a> From<&'a Extensions> for &'a StringsNoIndex {
     fn from(extensions: &'a Extensions) -> Self {
         extensions.get_strings()
     }
@@ -25,7 +25,7 @@ impl<'a> From<&'a Extensions> for &'a Strings {
 impl Extensions {
     /// Return Some(...) if strs.len() is even.
     /// None otherwise.
-    pub fn new(strs: Strings) -> Option<Self> {
+    pub fn new(strs: StringsNoIndex) -> Option<Self> {
         if strs.len() % 2 == 0 {
             Some(Self(strs))
         } else {
@@ -38,10 +38,6 @@ impl Extensions {
         self.0.push(data);
     }
 
-    pub fn reserve(&mut self, extensions: u32) {
-        self.0.reserve(extensions * 2);
-    }
-
     pub fn reserve_strs(&mut self, cnt: usize) {
         self.0.reserve_strs(cnt);
     }
@@ -50,12 +46,8 @@ impl Extensions {
         self.0.shrink_to_fit();
     }
 
-    pub fn get(&self, index: u32) -> Option<(&str, &str)> {
-        Some((self.0.get(index * 2)?, self.0.get(index * 2 + 1).unwrap()))
-    }
-
     /// Accumulate length of all strings.
-    pub fn strs_len(&self) -> u32 {
+    pub fn strs_len(&self) -> usize {
         self.0.strs_len()
     }
 
@@ -72,11 +64,11 @@ impl Extensions {
     }
 
     /// Return the underlying Strings
-    pub fn get_strings(&self) -> &Strings {
+    pub fn get_strings(&self) -> &StringsNoIndex {
         &self.0
     }
 
-    pub fn into_strings(self) -> Strings {
+    pub fn into_strings(self) -> StringsNoIndex {
         self.0
     }
 }
@@ -107,7 +99,6 @@ impl_visitor!(
         let len: u32 = iter.get_next()?;
 
         let mut extensions = Extensions::default();
-        extensions.reserve(len);
 
         for _ in 0..len {
             extensions.add_extension(iter.get_next()?, iter.get_next()?);
@@ -127,7 +118,7 @@ impl<'a> IntoIterator for &'a Extensions {
 }
 
 #[derive(Clone, Debug)]
-pub struct ExtensionsIter<'a>(StringsIter<'a>);
+pub struct ExtensionsIter<'a>(StringsNoIndexIter<'a>);
 
 impl<'a> Iterator for ExtensionsIter<'a> {
     type Item = (&'a str, &'a str);
@@ -154,13 +145,6 @@ mod tests {
         for (i, input_str) in input_strs.iter().enumerate() {
             extensions.add_extension(input_str, "1");
             assert_eq!(extensions.len() as usize, i + 1);
-        }
-
-        for (i, input_str) in input_strs.iter().enumerate() {
-            assert_eq!(
-                extensions.get(i.try_into().unwrap()).unwrap(),
-                (input_str.as_str(), "1")
-            );
         }
 
         for (input_str, each) in input_strs.iter().zip(extensions.iter()) {

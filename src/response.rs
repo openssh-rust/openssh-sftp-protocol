@@ -7,7 +7,7 @@ use serde::de::{Deserializer, Error, Unexpected};
 use serde::Deserialize;
 use ssh_format::from_bytes;
 
-use vec_strings::Strings;
+use vec_strings::StringsNoIndex;
 
 #[derive(Debug, Clone)]
 pub struct ServerVersion {
@@ -20,7 +20,7 @@ impl ServerVersion {
     pub fn deserialize(bytes: &[u8]) -> ssh_format::Result<Self> {
         let (version, mut bytes) = from_bytes(bytes)?;
 
-        let mut strings = Strings::new();
+        let mut strings = StringsNoIndex::new();
         while !bytes.is_empty() {
             let (string, bytes_left) = from_bytes(bytes)?;
             strings.push(string);
