@@ -107,7 +107,7 @@ impl_visitor!(
         let len: u32 = iter.get_next()?;
 
         let mut extensions = Extensions::default();
-        extensions.reserve(len as usize);
+        extensions.reserve(len);
 
         for _ in 0..len {
             extensions.add_extension(iter.get_next()?, iter.get_next()?);
