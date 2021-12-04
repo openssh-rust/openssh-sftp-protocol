@@ -28,6 +28,8 @@ impl ServerVersion {
             bytes = bytes_left;
         }
 
+        strings.shrink_to_fit();
+
         if let Some(extensions) = Extensions::new(strings) {
             Ok(Self {
                 version,
