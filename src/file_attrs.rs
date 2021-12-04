@@ -1,15 +1,85 @@
+use super::constants;
 use super::{extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
 
-use super::constants::{
-    SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
-    SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
-};
+use bitflags::bitflags;
 
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
+bitflags! {
+    #[derive(Default)]
+    struct FileAttrsFlags: u8 {
+        const SIZE = 1 << 0;
+        const ID = 1 << 1;
+        const PERMISSIONS = 1 << 2;
+        const TIME = 1 << 3;
+        const EXTENSIONS = 1 << 4;
+    }
+}
+impl Serialize for FileAttrsFlags {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use constants::{
+            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
+            SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
+        };
+
+        let mut flags: u32 = 0;
+        if self.intersects(FileAttrsFlags::SIZE) {
+            flags |= SSH_FILEXFER_ATTR_SIZE;
+        }
+        if self.intersects(FileAttrsFlags::ID) {
+            flags |= SSH_FILEXFER_ATTR_UIDGID;
+        }
+        if self.intersects(FileAttrsFlags::PERMISSIONS) {
+            flags |= SSH_FILEXFER_ATTR_PERMISSIONS;
+        }
+        if self.intersects(FileAttrsFlags::TIME) {
+            flags |= SSH_FILEXFER_ATTR_ACMODTIME;
+        }
+        if self.intersects(FileAttrsFlags::EXTENSIONS) {
+            flags |= SSH_FILEXFER_ATTR_EXTENDED;
+        }
+
+        flags.serialize(serializer)
+    }
+}
+
+impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
+    fn deserialize<D: crate::visitor::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
+        use constants::{
+            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
+            SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
+        };
+
+        let flags = u32::deserialize(deserializer)?;
+        let has_attr = |attr_mask| -> bool { (flags & attr_mask) != 0 };
+
+        let mut file_attrs_flags = FileAttrsFlags::empty();
+
+        if has_attr(SSH_FILEXFER_ATTR_SIZE) {
+            file_attrs_flags |= FileAttrsFlags::SIZE;
+        }
+        if has_attr(SSH_FILEXFER_ATTR_UIDGID) {
+            file_attrs_flags |= FileAttrsFlags::ID;
+        }
+        if has_attr(SSH_FILEXFER_ATTR_PERMISSIONS) {
+            file_attrs_flags |= FileAttrsFlags::PERMISSIONS;
+        }
+        if has_attr(SSH_FILEXFER_ATTR_ACMODTIME) {
+            file_attrs_flags |= FileAttrsFlags::TIME;
+        }
+        if has_attr(SSH_FILEXFER_ATTR_EXTENDED) {
+            file_attrs_flags |= FileAttrsFlags::EXTENSIONS;
+        }
+
+        Ok(file_attrs_flags)
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct FileAttrs {
-    flags: u32,
+    flags: FileAttrsFlags,
 
     /// present only if flag SSH_FILEXFER_ATTR_SIZE
     size: u64,
@@ -48,38 +118,38 @@ impl FileAttrs {
     }
 
     pub fn set_size(&mut self, size: u64) {
-        self.flags |= SSH_FILEXFER_ATTR_SIZE;
+        self.flags |= FileAttrsFlags::SIZE;
         self.size = size;
     }
 
     pub fn set_id(&mut self, uid: u32, gid: u32) {
-        self.flags |= SSH_FILEXFER_ATTR_UIDGID;
+        self.flags |= FileAttrsFlags::ID;
         self.uid = uid;
         self.gid = gid;
     }
 
     pub fn set_permissions(&mut self, permissions: u32) {
-        self.flags |= SSH_FILEXFER_ATTR_PERMISSIONS;
+        self.flags |= FileAttrsFlags::PERMISSIONS;
         self.permissions = permissions;
     }
 
     pub fn set_time(&mut self, atime: u32, mtime: u32) {
-        self.flags |= SSH_FILEXFER_ATTR_ACMODTIME;
+        self.flags |= FileAttrsFlags::TIME;
         self.atime = atime;
         self.mtime = mtime;
     }
 
     pub fn set_extensions(&mut self, extensions: Extensions) {
-        self.flags |= SSH_FILEXFER_ATTR_EXTENDED;
+        self.flags |= FileAttrsFlags::EXTENSIONS;
         self.extensions = extensions;
     }
 
-    fn has_attr(&self, attr_mask: u32) -> bool {
-        (self.flags & attr_mask) != 0
+    fn has_attr(&self, flag: FileAttrsFlags) -> bool {
+        self.flags.intersects(flag)
     }
 
-    fn getter_impl<T>(&self, attr_mask: u32, val: T) -> Option<T> {
-        if self.has_attr(attr_mask) {
+    fn getter_impl<T>(&self, flag: FileAttrsFlags, val: T) -> Option<T> {
+        if self.has_attr(flag) {
             Some(val)
         } else {
             None
@@ -87,29 +157,29 @@ impl FileAttrs {
     }
 
     pub fn get_size(&self) -> Option<u64> {
-        self.getter_impl(SSH_FILEXFER_ATTR_SIZE, self.size)
+        self.getter_impl(FileAttrsFlags::SIZE, self.size)
     }
 
     /// Return uid and gid
     pub fn get_id(&self) -> Option<(u32, u32)> {
-        self.getter_impl(SSH_FILEXFER_ATTR_UIDGID, (self.uid, self.gid))
+        self.getter_impl(FileAttrsFlags::ID, (self.uid, self.gid))
     }
 
     pub fn get_permissions(&self) -> Option<u32> {
-        self.getter_impl(SSH_FILEXFER_ATTR_PERMISSIONS, self.permissions)
+        self.getter_impl(FileAttrsFlags::PERMISSIONS, self.permissions)
     }
 
     /// Return atime and mtime
     pub fn get_time(&self) -> Option<(u32, u32)> {
-        self.getter_impl(SSH_FILEXFER_ATTR_ACMODTIME, (self.atime, self.mtime))
+        self.getter_impl(FileAttrsFlags::TIME, (self.atime, self.mtime))
     }
 
     pub fn get_extensions(&self) -> Option<&Extensions> {
-        self.getter_impl(SSH_FILEXFER_ATTR_EXTENDED, &self.extensions)
+        self.getter_impl(FileAttrsFlags::EXTENSIONS, &self.extensions)
     }
 
     pub fn get_extensions_mut(&mut self) -> Option<&mut Extensions> {
-        if (self.flags & SSH_FILEXFER_ATTR_EXTENDED) != 0 {
+        if self.has_attr(FileAttrsFlags::EXTENSIONS) {
             Some(&mut self.extensions)
         } else {
             None
@@ -152,27 +222,26 @@ impl Serialize for FileAttrs {
 
 impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
     let mut iter = SeqIter::new(seq);
-    let mut attrs = FileAttrs::default();
+    let mut attrs = FileAttrs {
+        flags: iter.get_next()?,
+        ..Default::default()
+    };
 
-    let flags = iter.get_next()?;
-
-    attrs.flags = flags;
-
-    if attrs.has_attr(SSH_FILEXFER_ATTR_SIZE) {
+    if attrs.has_attr(FileAttrsFlags::SIZE) {
         attrs.size = iter.get_next()?;
     }
-    if attrs.has_attr(SSH_FILEXFER_ATTR_UIDGID) {
+    if attrs.has_attr(FileAttrsFlags::ID) {
         attrs.uid = iter.get_next()?;
         attrs.gid = iter.get_next()?;
     }
-    if attrs.has_attr(SSH_FILEXFER_ATTR_PERMISSIONS) {
+    if attrs.has_attr(FileAttrsFlags::PERMISSIONS) {
         attrs.permissions = iter.get_next()?;
     }
-    if attrs.has_attr(SSH_FILEXFER_ATTR_ACMODTIME) {
+    if attrs.has_attr(FileAttrsFlags::TIME) {
         attrs.atime = iter.get_next()?;
         attrs.mtime = iter.get_next()?;
     }
-    if attrs.has_attr(SSH_FILEXFER_ATTR_EXTENDED) {
+    if attrs.has_attr(FileAttrsFlags::EXTENSIONS) {
         attrs.extensions = iter.get_next()?;
     }
 
@@ -181,9 +250,9 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
 
 #[cfg(test)]
 mod tests {
-    use super::{Extensions, FileAttrs};
+    use super::{Extensions, FileAttrs, FileAttrsFlags};
 
-    use super::{
+    use super::constants::{
         SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
         SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
     };
@@ -239,6 +308,36 @@ mod tests {
     // Test Serialize and Deserialize
 
     use serde_test::{assert_tokens, Token};
+
+    #[test]
+    fn test_file_attr_flags() {
+        assert_tokens(&FileAttrsFlags::empty(), &[Token::U32(0)]);
+        assert_tokens(&FileAttrsFlags::SIZE, &[Token::U32(SSH_FILEXFER_ATTR_SIZE)]);
+        assert_tokens(&FileAttrsFlags::ID, &[Token::U32(SSH_FILEXFER_ATTR_UIDGID)]);
+        assert_tokens(
+            &FileAttrsFlags::PERMISSIONS,
+            &[Token::U32(SSH_FILEXFER_ATTR_PERMISSIONS)],
+        );
+        assert_tokens(
+            &FileAttrsFlags::TIME,
+            &[Token::U32(SSH_FILEXFER_ATTR_ACMODTIME)],
+        );
+        assert_tokens(
+            &FileAttrsFlags::EXTENSIONS,
+            &[Token::U32(SSH_FILEXFER_ATTR_EXTENDED)],
+        );
+
+        assert_tokens(
+            &FileAttrsFlags::all(),
+            &[Token::U32(
+                SSH_FILEXFER_ATTR_SIZE
+                    | SSH_FILEXFER_ATTR_UIDGID
+                    | SSH_FILEXFER_ATTR_PERMISSIONS
+                    | SSH_FILEXFER_ATTR_ACMODTIME
+                    | SSH_FILEXFER_ATTR_EXTENDED,
+            )],
+        );
+    }
 
     fn init_attrs(f: impl FnOnce(&mut FileAttrs)) -> FileAttrs {
         let mut attrs = FileAttrs::default();
