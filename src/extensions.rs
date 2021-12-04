@@ -43,7 +43,7 @@ impl Extensions {
     }
 
     pub fn reserve_strs(&mut self, cnt: usize) {
-        self.0.reserve(cnt);
+        self.0.reserve_strs(cnt);
     }
 
     pub fn shrink_to_fit(&mut self) {
