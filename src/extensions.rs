@@ -38,7 +38,7 @@ impl Extensions {
         self.0.push(data);
     }
 
-    pub fn reserve(&mut self, extensions: usize) {
+    pub fn reserve(&mut self, extensions: u32) {
         self.0.reserve(extensions * 2);
     }
 
