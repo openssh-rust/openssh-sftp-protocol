@@ -104,6 +104,8 @@ impl_visitor!(
             extensions.add_extension(iter.get_next()?, iter.get_next()?);
         }
 
+        extensions.shrink_to_fit();
+
         Ok(extensions)
     }
 );
