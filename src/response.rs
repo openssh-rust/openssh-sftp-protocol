@@ -197,7 +197,7 @@ impl<'de> Deserialize<'de> for StatusCode {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ErrMsg {
-    err_msg: Box<str>,
+    pub err_msg: Box<str>,
 
     /// [RFC-1766]
     ///
@@ -205,7 +205,7 @@ pub struct ErrMsg {
     /// [pyfisch/rust-language-tags](https://github.com/pyfisch/rust-language-tags)
     /// according to
     /// [this issue](https://github.com/pyfisch/rust-language-tags/issues/39).
-    language_tag: Box<str>,
+    pub language_tag: Box<str>,
 }
 
 /// Entry in ResponseInner::Name
