@@ -7,7 +7,7 @@ use serde::de::{Deserializer, Error, Unexpected};
 use serde::Deserialize;
 use ssh_format::from_bytes;
 
-use vec_strings::StringsNoIndex;
+use vec_strings::{StringsNoIndex, TwoStrs};
 
 #[derive(Debug, Clone)]
 pub struct ServerVersion {
@@ -196,16 +196,20 @@ impl<'de> Deserialize<'de> for StatusCode {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ErrMsg {
-    pub err_msg: Box<str>,
+pub struct ErrMsg(TwoStrs);
 
-    /// [RFC-1766]
+impl ErrMsg {
+    /// Returns (err_message, language_tag).
     ///
-    /// This tag can be parsed by
+    /// Language tag is defined according to specification [RFC-1766].
+    ///
+    /// It can be parsed by
     /// [pyfisch/rust-language-tags](https://github.com/pyfisch/rust-language-tags)
     /// according to
     /// [this issue](https://github.com/pyfisch/rust-language-tags/issues/39).
-    pub language_tag: Box<str>,
+    pub fn get(&self) -> (&str, &str) {
+        self.0.get()
+    }
 }
 
 /// Entry in ResponseInner::Name
