@@ -256,6 +256,12 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
 #[derive(Debug)]
 pub struct FileAttrsBox(pub ArenaBox<FileAttrs>);
 
+impl Default for FileAttrsBox {
+    fn default() -> Self {
+        Self::new(FileAttrs::new())
+    }
+}
+
 impl FileAttrsBox {
     /// Return a shared arena that can be used to allocate
     /// `FileAttrs` efficiently.
