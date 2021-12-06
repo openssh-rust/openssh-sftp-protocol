@@ -115,19 +115,6 @@ impl PartialEq for FileAttrs {
 impl Eq for FileAttrs {}
 
 impl FileAttrs {
-    /// Return a shared arena that can be used to allocate
-    /// `FileAttrs` efficiently.
-    pub fn get_shared_arena() -> &'static SharedArena<Self> {
-        static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
-
-        ARENA.get_or_init(SharedArena::new)
-    }
-
-    /// Create `ArenaBox` on shared_arena and move `self` onto it.
-    pub fn alloc(self) -> ArenaBox<Self> {
-        Self::get_shared_arena().alloc(self)
-    }
-
     #[inline]
     pub fn new() -> Self {
         Self::default()
@@ -263,6 +250,44 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
 
     Ok(attrs)
 });
+
+#[derive(Debug)]
+pub struct FileAttrsBox(pub ArenaBox<FileAttrs>);
+
+impl FileAttrsBox {
+    /// Return a shared arena that can be used to allocate
+    /// `FileAttrs` efficiently.
+    pub fn get_shared_arena() -> &'static SharedArena<FileAttrs> {
+        static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
+
+        ARENA.get_or_init(SharedArena::new)
+    }
+
+    /// Create `ArenaBox` on shared_arena and move `self` onto it.
+    pub fn alloc(file_attrs: FileAttrs) -> Self {
+        Self(Self::get_shared_arena().alloc(file_attrs))
+    }
+}
+
+impl Clone for FileAttrsBox {
+    fn clone(&self) -> Self {
+        Self::alloc(self.0.clone())
+    }
+}
+
+impl Serialize for FileAttrsBox {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (*self.0).serialize(serializer)
+    }
+}
+
+impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
+    fn deserialize<D: crate::visitor::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Self, D::Error> {
+        Ok(Self::alloc(FileAttrs::deserialize(deserializer)?))
+    }
+}
 
 #[cfg(test)]
 mod tests {
