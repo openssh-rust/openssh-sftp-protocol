@@ -1,6 +1,6 @@
+use super::file_attrs::{FileAttrs, FileAttrsBox};
 use super::{
-    constants, extensions::Extensions, file_attrs::FileAttrs, seq_iter::SeqIter,
-    visitor::impl_visitor, HandleOwned,
+    constants, extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned,
 };
 
 use serde::de::{Deserializer, Error, Unexpected};
@@ -57,7 +57,7 @@ pub enum ResponseInner {
 
     Name(Box<[NameEntry]>),
 
-    Attrs(Box<FileAttrs>),
+    Attrs(FileAttrsBox),
 }
 
 #[derive(Debug, Clone)]
