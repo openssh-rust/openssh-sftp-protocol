@@ -1,6 +1,8 @@
 use super::constants;
 use super::{extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
 
+use core::ops::{Deref, DerefMut};
+
 use bitflags::bitflags;
 
 use serde::ser::{Serialize, SerializeTuple, Serializer};
@@ -272,6 +274,20 @@ impl FileAttrsBox {
 impl Clone for FileAttrsBox {
     fn clone(&self) -> Self {
         Self::alloc(self.0.clone())
+    }
+}
+
+impl Deref for FileAttrsBox {
+    type Target = FileAttrs;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl DerefMut for FileAttrsBox {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.0
     }
 }
 
