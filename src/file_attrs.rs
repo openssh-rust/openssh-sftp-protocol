@@ -5,6 +5,9 @@ use bitflags::bitflags;
 
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
+use once_cell::sync::OnceCell;
+use shared_arena::SharedArena;
+
 bitflags! {
     #[derive(Default)]
     struct FileAttrsFlags: u8 {
@@ -112,6 +115,14 @@ impl PartialEq for FileAttrs {
 impl Eq for FileAttrs {}
 
 impl FileAttrs {
+    /// Return a shared arena that can be used to allocate
+    /// `FileAttrs` efficiently.
+    pub fn get_shared_arena() -> &'static SharedArena<Self> {
+        static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
+
+        ARENA.get_or_init(SharedArena::new)
+    }
+
     #[inline]
     pub fn new() -> Self {
         Self::default()
