@@ -255,7 +255,7 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
 });
 
 #[derive(Debug)]
-pub struct FileAttrsBox(pub ArenaBox<FileAttrs>);
+pub struct FileAttrsBox(ArenaBox<FileAttrs>);
 
 impl Default for FileAttrsBox {
     fn default() -> Self {
