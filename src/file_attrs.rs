@@ -265,15 +265,15 @@ impl FileAttrsBox {
         ARENA.get_or_init(SharedArena::new)
     }
 
-    /// Create `ArenaBox` on shared_arena and move `self` onto it.
-    pub fn alloc(file_attrs: FileAttrs) -> Self {
+    /// Allocate an `ArenaBox` on shared_arena.
+    pub fn new(file_attrs: FileAttrs) -> Self {
         Self(Self::get_shared_arena().alloc(file_attrs))
     }
 }
 
 impl Clone for FileAttrsBox {
     fn clone(&self) -> Self {
-        Self::alloc(self.0.clone())
+        Self::new(self.0.clone())
     }
 }
 
@@ -301,7 +301,7 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
     fn deserialize<D: crate::visitor::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Self, D::Error> {
-        Ok(Self::alloc(FileAttrs::deserialize(deserializer)?))
+        Ok(Self::new(FileAttrs::deserialize(deserializer)?))
     }
 }
 
