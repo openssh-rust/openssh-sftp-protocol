@@ -6,7 +6,7 @@ use bitflags::bitflags;
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
 use once_cell::sync::OnceCell;
-use shared_arena::SharedArena;
+use shared_arena::{ArenaBox, SharedArena};
 
 bitflags! {
     #[derive(Default)]
@@ -121,6 +121,11 @@ impl FileAttrs {
         static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
 
         ARENA.get_or_init(SharedArena::new)
+    }
+
+    /// Create `ArenaBox` on shared_arena and move `self` onto it.
+    pub fn alloc(self) -> ArenaBox<Self> {
+        Self::get_shared_arena().alloc(self)
     }
 
     #[inline]
