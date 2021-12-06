@@ -1,6 +1,7 @@
 use super::constants;
 use super::{extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
 
+use core::fmt;
 use core::ops::{Deref, DerefMut};
 
 use bitflags::bitflags;
@@ -294,6 +295,12 @@ impl Deref for FileAttrsBox {
 impl DerefMut for FileAttrsBox {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut *self.0
+    }
+}
+
+impl fmt::Pointer for FileAttrsBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.0, f)
     }
 }
 
