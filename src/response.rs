@@ -51,8 +51,6 @@ pub enum ResponseInner {
 
     Handle(HandleOwned),
 
-    /// The remaining bytes returned by ssh_format::from_bytes is the data
-    /// of the packet.
     Data,
 
     Name(Box<[NameEntry]>),
