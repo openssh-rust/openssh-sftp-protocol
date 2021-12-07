@@ -134,8 +134,22 @@ impl<'a> Iterator for ExtensionsIter<'a> {
 mod tests {
     use super::Extensions;
 
+    use vec_strings::StringsNoIndex;
+
     use once_cell::sync::OnceCell;
     use serde_test::{assert_tokens, Token};
+
+    #[test]
+    fn test_from_strings_no_index() {
+        for cnt in (0..101).step_by(2) {
+            let mut strings = StringsNoIndex::new();
+            for i in 0..cnt {
+                strings.push(&i.to_string());
+            }
+
+            Extensions::new(strings).unwrap();
+        }
+    }
 
     #[test]
     fn test() {
