@@ -18,7 +18,11 @@ impl ServerVersion {
     /// * `bytes` - should not include the initial 4-byte which server
     ///   as the length of the whole packet.
     pub fn deserialize(bytes: &[u8]) -> ssh_format::Result<Self> {
-        let (version, mut bytes) = from_bytes(bytes)?;
+        let ((version, packet_type), mut bytes): ((_, u8), _) = from_bytes(bytes)?;
+
+        if packet_type != constants::SSH_FXP_VERSION {
+            return Err(ssh_format::Error::custom("Unexpected response"));
+        }
 
         let mut strings = StringsNoIndex::new();
         while !bytes.is_empty() {
