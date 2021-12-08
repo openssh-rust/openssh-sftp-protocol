@@ -3,6 +3,8 @@ use super::{
     constants, extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned,
 };
 
+use core::fmt;
+
 use serde::de::{Deserializer, Error, Unexpected};
 use serde::Deserialize;
 use ssh_format::from_bytes;
@@ -211,6 +213,17 @@ impl ErrMsg {
     /// [this issue](https://github.com/pyfisch/rust-language-tags/issues/39).
     pub fn get(&self) -> (&str, &str) {
         self.0.get()
+    }
+}
+
+impl fmt::Display for ErrMsg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (err_msg, language_tag) = self.get();
+        write!(
+            f,
+            "Err Message: {}, Language Tag: {}",
+            err_msg, language_tag
+        )
     }
 }
 
