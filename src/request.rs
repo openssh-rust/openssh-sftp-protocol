@@ -202,10 +202,15 @@ impl Request<'_> {
         offset: u64,
         data_len: u32,
     ) -> ssh_format::Result<&'a [u8]> {
+        let handle_len: u32 = handle
+            .len()
+            .try_into()
+            .map_err(|_| ssh_format::Error::Message("Length of handle is too long".into()))?;
         serializer.reset();
         (
             constants::SSH_FXP_WRITE,
             request_id,
+            handle_len,
             handle,
             offset,
             data_len,
