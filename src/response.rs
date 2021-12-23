@@ -99,10 +99,7 @@ impl_visitor!(
                 err_msg: iter.get_next()?,
             },
 
-            SSH_FXP_HANDLE => {
-                let handle: &[u8] = iter.get_next()?;
-                Handle(handle.into())
-            }
+            SSH_FXP_HANDLE => Handle(iter.get_next()?),
 
             SSH_FXP_DATA => Data,
 
