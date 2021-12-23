@@ -2,12 +2,16 @@ use super::constants;
 use super::{extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
 
 use core::fmt;
+use core::num::TryFromIntError;
 use core::ops::{Deref, DerefMut};
+
+use std::time::{Duration, SystemTime, SystemTimeError};
 
 use bitflags::bitflags;
 
 use serde::de::{Error, Unexpected};
-use serde::ser::{Serialize, SerializeTuple, Serializer};
+use serde::ser::{SerializeTuple, Serializer};
+use serde::Serialize;
 
 use once_cell::sync::OnceCell;
 use shared_arena::{ArenaBox, SharedArena};
@@ -130,6 +134,74 @@ bitflags! {
     }
 }
 
+/// Default value is 1970-01-01 00:00:00 UTC.
+///
+/// UnixTimeStamp stores number of seconds elapsed since 1970-01-01 00:00:00 UTC
+/// as `u32`.
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+pub struct UnixTimeStamp(u32);
+
+#[derive(Debug, thiserror::Error)]
+pub enum UnixTimeStampError {
+    /// TimeStamp is earlier than 1970-01-01 00:00:00 UTC.
+    #[error("TimeStamp is earlier than 1970-01-01 00:00:00 UTC.")]
+    TooEarly(#[from] SystemTimeError),
+
+    /// TimeStamp is too large to be represented using u32 in seconds.
+    #[error("TimeStamp is too large to be represented using u32 in seconds.")]
+    TooLarge(#[from] TryFromIntError),
+}
+
+impl UnixTimeStamp {
+    pub fn new(system_time: SystemTime) -> Result<Self, UnixTimeStampError> {
+        let duration = system_time.duration_since(SystemTime::UNIX_EPOCH)?;
+        let seconds: u32 = duration.as_secs().try_into()?;
+        Ok(Self(seconds))
+    }
+
+    /// Return `None` if `SystemTime` cannot hold the timestamp.
+    pub fn from_raw(elapsed: u32) -> Option<Self> {
+        let this = Self(elapsed);
+
+        let duration = this.as_duration();
+        SystemTime::UNIX_EPOCH.checked_add(duration)?;
+
+        Some(this)
+    }
+
+    pub fn into_raw(self) -> u32 {
+        self.0
+    }
+
+    pub fn as_duration(self) -> Duration {
+        Duration::from_secs(self.0 as u64)
+    }
+
+    pub fn as_system_time(self) -> SystemTime {
+        SystemTime::UNIX_EPOCH + self.as_duration()
+    }
+}
+
+impl_visitor!(
+    UnixTimeStamp,
+    UnixTimeStampVisitor,
+    "Unix Timestamp",
+    seq,
+    {
+        let mut iter = SeqIter::new(seq);
+        let elapsed: u32 = iter.get_next()?;
+
+        let timestamp = UnixTimeStamp::from_raw(elapsed).ok_or_else(|| {
+            V::Error::invalid_value(
+                Unexpected::Unsigned(elapsed as u64),
+                &"Invalid UnixTimeStamp (seconds)",
+            )
+        })?;
+
+        Ok(timestamp)
+    }
+);
+
 #[derive(Debug, Default, Clone)]
 pub struct FileAttrs {
     flags: FileAttrsFlags,
@@ -145,8 +217,8 @@ pub struct FileAttrs {
     permissions: Permissions,
 
     /// present only if flag SSH_FILEXFER_ATTR_ACMODTIME
-    atime: u32,
-    mtime: u32,
+    atime: UnixTimeStamp,
+    mtime: UnixTimeStamp,
 
     /// present only if flag SSH_FILEXFER_ATTR_EXTENDED
     extensions: Extensions,
@@ -186,7 +258,7 @@ impl FileAttrs {
         self.permissions = permissions;
     }
 
-    pub fn set_time(&mut self, atime: u32, mtime: u32) {
+    pub fn set_time(&mut self, atime: UnixTimeStamp, mtime: UnixTimeStamp) {
         self.flags |= FileAttrsFlags::TIME;
         self.atime = atime;
         self.mtime = mtime;
@@ -223,7 +295,7 @@ impl FileAttrs {
     }
 
     /// Return atime and mtime
-    pub fn get_time(&self) -> Option<(u32, u32)> {
+    pub fn get_time(&self) -> Option<(UnixTimeStamp, UnixTimeStamp)> {
         self.getter_impl(FileAttrsFlags::TIME, (self.atime, self.mtime))
     }
 
@@ -261,8 +333,8 @@ impl Serialize for FileAttrs {
         }
 
         if let Some((atime, mtime)) = self.get_time() {
-            tuple_serializer.serialize_element(&atime)?;
-            tuple_serializer.serialize_element(&mtime)?;
+            tuple_serializer.serialize_element(&atime.into_raw())?;
+            tuple_serializer.serialize_element(&mtime.into_raw())?;
         }
 
         if let Some(extensions) = self.get_extensions() {
@@ -296,9 +368,21 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
             )
         })?;
     }
+
+    let into_timestamp = |elapsed: u32| {
+        let timestamp = UnixTimeStamp::from_raw(elapsed).ok_or_else(|| {
+            V::Error::invalid_value(
+                Unexpected::Unsigned(elapsed as u64),
+                &"Invalid UnixTimeStamp (seconds)",
+            )
+        })?;
+
+        Ok(timestamp)
+    };
+
     if attrs.has_attr(FileAttrsFlags::TIME) {
-        attrs.atime = iter.get_next()?;
-        attrs.mtime = iter.get_next()?;
+        attrs.atime = into_timestamp(iter.get_next()?)?;
+        attrs.mtime = into_timestamp(iter.get_next()?)?;
     }
     if attrs.has_attr(FileAttrsFlags::EXTENSIONS) {
         attrs.extensions = iter.get_next()?;
@@ -373,7 +457,7 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
 
 #[cfg(test)]
 mod tests {
-    use super::{Extensions, FileAttrs, FileAttrsFlags, Permissions};
+    use super::{Extensions, FileAttrs, FileAttrsFlags, Permissions, UnixTimeStamp};
 
     use super::constants::{
         SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
@@ -388,6 +472,13 @@ mod tests {
             extensions.add_extension(&i.to_string(), &(i + 1).to_string());
         }
         extensions
+    }
+
+    fn get_unix_timestamps() -> (UnixTimeStamp, UnixTimeStamp) {
+        (
+            UnixTimeStamp::from_raw(2).unwrap(),
+            UnixTimeStamp::from_raw(150).unwrap(),
+        )
     }
 
     #[test]
@@ -413,9 +504,11 @@ mod tests {
 
     #[test]
     fn test_set_get_time() {
+        let (atime, mtime) = get_unix_timestamps();
+
         let mut attrs = FileAttrs::default();
-        attrs.set_time(2, 150);
-        assert_eq!(attrs.get_time().unwrap(), (2, 150));
+        attrs.set_time(atime, mtime);
+        assert_eq!(attrs.get_time().unwrap(), (atime, mtime));
     }
 
     #[test]
@@ -510,13 +603,15 @@ mod tests {
 
     #[test]
     fn test_ser_de_time() {
+        let (atime, mtime) = get_unix_timestamps();
+
         assert_tokens(
-            &init_attrs(|attrs| attrs.set_time(2, 150)),
+            &init_attrs(|attrs| attrs.set_time(atime, mtime)),
             &[
                 Token::Tuple { len: 1 },
                 Token::U32(SSH_FILEXFER_ATTR_ACMODTIME),
-                Token::U32(2),
-                Token::U32(150),
+                Token::U32(atime.into_raw()),
+                Token::U32(mtime.into_raw()),
                 Token::TupleEnd,
             ],
         );
@@ -549,12 +644,14 @@ mod tests {
         let mut extensions = Extensions::default();
         extensions.add_extension("1", "@");
 
+        let (atime, mtime) = get_unix_timestamps();
+
         assert_tokens(
             &init_attrs(|attrs| {
                 attrs.set_size(2333);
                 attrs.set_id(u32::MAX, 1000);
                 attrs.set_permissions(Permissions::READ_BY_OWNER);
-                attrs.set_time(2, 150);
+                attrs.set_time(atime, mtime);
                 attrs.set_extensions(extensions);
             }),
             &[
@@ -570,8 +667,8 @@ mod tests {
                 Token::U32(u32::MAX),                          // uid
                 Token::U32(1000),                              // gid
                 Token::U32(Permissions::READ_BY_OWNER.bits()), // permissions
-                Token::U32(2),                                 // atime
-                Token::U32(150),                               // mtime
+                Token::U32(atime.into_raw()),                  // atime
+                Token::U32(mtime.into_raw()),                  // mtime
                 // Start of extensions
                 Token::Tuple { len: 3 },
                 Token::U32(1),
