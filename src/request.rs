@@ -203,7 +203,14 @@ impl Request<'_> {
         data_len: u32,
     ) -> ssh_format::Result<&'a [u8]> {
         serializer.reset();
-        (constants::SSH_FXP_WRITE, request_id, handle, offset).serialize(&mut *serializer)?;
+        (
+            constants::SSH_FXP_WRITE,
+            request_id,
+            handle,
+            offset,
+            data_len,
+        )
+            .serialize(&mut *serializer)?;
 
         serializer
             .get_output_with_data(data_len)
