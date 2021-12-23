@@ -202,7 +202,7 @@ impl<'de> Deserialize<'de> for StatusCode {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct ErrMsg(TwoStrs);
 
 impl ErrMsg {
@@ -227,6 +227,12 @@ impl fmt::Display for ErrMsg {
             "Err Message: {}, Language Tag: {}",
             err_msg, language_tag
         )
+    }
+}
+
+impl fmt::Debug for ErrMsg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
