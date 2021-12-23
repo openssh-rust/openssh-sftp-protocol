@@ -30,7 +30,7 @@ macro_rules! impl_visitor {
                 }
 
                 // Pass a dummy size here since ssh_format doesn't care
-                deserializer.deserialize_tuple(1, $visitor_name)
+                deserializer.deserialize_tuple(u32::MAX as usize, $visitor_name)
             }
         }
     };
