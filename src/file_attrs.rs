@@ -6,6 +6,7 @@ use core::ops::{Deref, DerefMut};
 
 use bitflags::bitflags;
 
+use serde::de::{Error, Unexpected};
 use serde::ser::{Serialize, SerializeTuple, Serializer};
 
 use once_cell::sync::OnceCell;
@@ -83,6 +84,52 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
     }
 }
 
+bitflags! {
+    #[derive(Default)]
+    pub struct Permissions: u32 {
+        /// set-user-ID (set process effective user ID on execve(2))
+        const SET_UID = libc::S_ISUID;
+
+        /// set-group-ID
+        ///
+        ///  - set process effective group ID on execve(2)
+        ///  - mandatory locking, as described in fcntl(2)
+        ///  - take a new file's group from parent directory, as described in
+        ///    chown(2) and mkdir(2)
+        const SET_GID = libc::S_ISGID;
+
+        /// sticky bit (restricted deletion flag, as described in unlink(2))
+        const SET_VTX = libc::S_ISVTX;
+
+        /// read by owner
+        const READ_BY_OWNER = libc::S_IRUSR;
+
+        /// write by owner
+        const WRITE_BY_OWNER = libc::S_IWUSR;
+
+        /// execute file or search directory by owner
+        const EXECUTE_BY_OWNER = libc::S_IXUSR;
+
+        /// read by group
+        const READ_BY_GROUP = libc::S_IRGRP;
+
+        /// write by group
+        const WRITE_BY_GROUP = libc::S_IWGRP;
+
+        /// execute/search by group
+        const EXECUTE_BY_GROUP = libc::S_IXGRP;
+
+        /// read by others
+        const READ_BY_OTHER = libc::S_IROTH;
+
+        /// write by others
+        const WRITE_BY_OTHER = libc::S_IWOTH;
+
+        /// execute/search by others
+        const EXECUTE_BY_OTHER = libc::S_IXOTH;
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct FileAttrs {
     flags: FileAttrsFlags,
@@ -95,7 +142,7 @@ pub struct FileAttrs {
     gid: u32,
 
     /// present only if flag SSH_FILEXFER_ATTR_PERMISSIONS
-    permissions: u32,
+    permissions: Permissions,
 
     /// present only if flag SSH_FILEXFER_ATTR_ACMODTIME
     atime: u32,
@@ -134,7 +181,7 @@ impl FileAttrs {
         self.gid = gid;
     }
 
-    pub fn set_permissions(&mut self, permissions: u32) {
+    pub fn set_permissions(&mut self, permissions: Permissions) {
         self.flags |= FileAttrsFlags::PERMISSIONS;
         self.permissions = permissions;
     }
@@ -171,7 +218,7 @@ impl FileAttrs {
         self.getter_impl(FileAttrsFlags::ID, (self.uid, self.gid))
     }
 
-    pub fn get_permissions(&self) -> Option<u32> {
+    pub fn get_permissions(&self) -> Option<Permissions> {
         self.getter_impl(FileAttrsFlags::PERMISSIONS, self.permissions)
     }
 
@@ -210,7 +257,7 @@ impl Serialize for FileAttrs {
         }
 
         if let Some(perm) = self.get_permissions() {
-            tuple_serializer.serialize_element(&perm)?;
+            tuple_serializer.serialize_element(&perm.bits())?;
         }
 
         if let Some((atime, mtime)) = self.get_time() {
@@ -241,7 +288,13 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
         attrs.gid = iter.get_next()?;
     }
     if attrs.has_attr(FileAttrsFlags::PERMISSIONS) {
-        attrs.permissions = iter.get_next()?;
+        let raw_perm: u32 = iter.get_next()?;
+        attrs.permissions = Permissions::from_bits(raw_perm).ok_or_else(|| {
+            V::Error::invalid_value(
+                Unexpected::Unsigned(raw_perm as u64),
+                &"Invalid permission: Does not confirm to value specified in POSIX",
+            )
+        })?;
     }
     if attrs.has_attr(FileAttrsFlags::TIME) {
         attrs.atime = iter.get_next()?;
@@ -320,7 +373,7 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
 
 #[cfg(test)]
 mod tests {
-    use super::{Extensions, FileAttrs, FileAttrsFlags};
+    use super::{Extensions, FileAttrs, FileAttrsFlags, Permissions};
 
     use super::constants::{
         SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
@@ -354,8 +407,8 @@ mod tests {
     #[test]
     fn test_set_get_permissions() {
         let mut attrs = FileAttrs::default();
-        attrs.set_permissions(0x102);
-        assert_eq!(attrs.get_permissions().unwrap(), 0x102);
+        attrs.set_permissions(Permissions::SET_GID);
+        assert_eq!(attrs.get_permissions().unwrap(), Permissions::SET_GID);
     }
 
     #[test]
@@ -445,11 +498,11 @@ mod tests {
     #[test]
     fn test_ser_de_permissions() {
         assert_tokens(
-            &init_attrs(|attrs| attrs.set_permissions(0x102)),
+            &init_attrs(|attrs| attrs.set_permissions(Permissions::WRITE_BY_OTHER)),
             &[
                 Token::Tuple { len: 1 },
                 Token::U32(SSH_FILEXFER_ATTR_PERMISSIONS),
-                Token::U32(0x102),
+                Token::U32(Permissions::WRITE_BY_OTHER.bits()),
                 Token::TupleEnd,
             ],
         );
@@ -500,7 +553,7 @@ mod tests {
             &init_attrs(|attrs| {
                 attrs.set_size(2333);
                 attrs.set_id(u32::MAX, 1000);
-                attrs.set_permissions(0x102);
+                attrs.set_permissions(Permissions::READ_BY_OWNER);
                 attrs.set_time(2, 150);
                 attrs.set_extensions(extensions);
             }),
@@ -513,12 +566,12 @@ mod tests {
                         | SSH_FILEXFER_ATTR_ACMODTIME
                         | SSH_FILEXFER_ATTR_EXTENDED,
                 ),
-                Token::U64(2333),     // size
-                Token::U32(u32::MAX), // uid
-                Token::U32(1000),     // gid
-                Token::U32(0x102),    // permissions
-                Token::U32(2),        // atime
-                Token::U32(150),      // mtime
+                Token::U64(2333),                              // size
+                Token::U32(u32::MAX),                          // uid
+                Token::U32(1000),                              // gid
+                Token::U32(Permissions::READ_BY_OWNER.bits()), // permissions
+                Token::U32(2),                                 // atime
+                Token::U32(150),                               // mtime
                 // Start of extensions
                 Token::Tuple { len: 3 },
                 Token::U32(1),
