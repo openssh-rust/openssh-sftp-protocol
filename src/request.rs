@@ -246,14 +246,14 @@ bitflags! {
 pub struct OpenFile<'a> {
     filename: Cow<'a, Path>,
     flags: u32,
-    attrs: Option<FileAttrs>,
+    attrs: FileAttrs,
 }
 impl<'a> OpenFile<'a> {
     pub fn open(filename: Cow<'a, Path>, mode: FileMode) -> Self {
         Self {
             filename,
             flags: mode.bits(),
-            attrs: None,
+            attrs: Default::default(),
         }
     }
 
@@ -266,7 +266,7 @@ impl<'a> OpenFile<'a> {
         Self {
             filename,
             flags: mode.bits() | constants::SSH_FXF_CREAT | create_flags.bits(),
-            attrs: Some(attrs),
+            attrs,
         }
     }
 }
