@@ -15,4 +15,4 @@ pub mod request;
 pub mod response;
 
 pub type Handle = [u8];
-pub type HandleOwned = Box<[u8]>;
+pub type HandleOwned = vec_strings::SmallArrayBox<u8, 4>;
