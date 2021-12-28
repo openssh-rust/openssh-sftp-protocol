@@ -138,7 +138,7 @@ impl Serialize for Request<'_> {
                 (constants::SSH_FXP_MKDIR, request_id, path, attrs).serialize(serializer)
             }
 
-            Rmdir(path) => (constants::SSH_FXP_MKDIR, request_id, path).serialize(serializer),
+            Rmdir(path) => (constants::SSH_FXP_RMDIR, request_id, path).serialize(serializer),
 
             Opendir(path) => (constants::SSH_FXP_OPENDIR, request_id, path).serialize(serializer),
 
