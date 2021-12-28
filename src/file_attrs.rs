@@ -1,5 +1,5 @@
 use super::constants;
-use super::{extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor};
+use super::{seq_iter::SeqIter, visitor::impl_visitor};
 
 use core::fmt;
 use core::num::TryFromIntError;
@@ -23,14 +23,13 @@ bitflags! {
         const ID = 1 << 1;
         const PERMISSIONS = 1 << 2;
         const TIME = 1 << 3;
-        const EXTENSIONS = 1 << 4;
     }
 }
 impl Serialize for FileAttrsFlags {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use constants::{
-            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
-            SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
+            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_PERMISSIONS, SSH_FILEXFER_ATTR_SIZE,
+            SSH_FILEXFER_ATTR_UIDGID,
         };
 
         let mut flags: u32 = 0;
@@ -46,9 +45,6 @@ impl Serialize for FileAttrsFlags {
         if self.intersects(FileAttrsFlags::TIME) {
             flags |= SSH_FILEXFER_ATTR_ACMODTIME;
         }
-        if self.intersects(FileAttrsFlags::EXTENSIONS) {
-            flags |= SSH_FILEXFER_ATTR_EXTENDED;
-        }
 
         flags.serialize(serializer)
     }
@@ -59,8 +55,8 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
         deserializer: D,
     ) -> Result<Self, D::Error> {
         use constants::{
-            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
-            SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
+            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_PERMISSIONS, SSH_FILEXFER_ATTR_SIZE,
+            SSH_FILEXFER_ATTR_UIDGID,
         };
 
         let flags = u32::deserialize(deserializer)?;
@@ -79,9 +75,6 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
         }
         if has_attr(SSH_FILEXFER_ATTR_ACMODTIME) {
             file_attrs_flags |= FileAttrsFlags::TIME;
-        }
-        if has_attr(SSH_FILEXFER_ATTR_EXTENDED) {
-            file_attrs_flags |= FileAttrsFlags::EXTENSIONS;
         }
 
         Ok(file_attrs_flags)
@@ -219,9 +212,6 @@ pub struct FileAttrs {
     /// present only if flag SSH_FILEXFER_ATTR_ACMODTIME
     atime: UnixTimeStamp,
     mtime: UnixTimeStamp,
-
-    /// present only if flag SSH_FILEXFER_ATTR_EXTENDED
-    extensions: Extensions,
 }
 
 impl PartialEq for FileAttrs {
@@ -230,7 +220,6 @@ impl PartialEq for FileAttrs {
             && self.get_id() == other.get_id()
             && self.get_permissions() == other.get_permissions()
             && self.get_time() == other.get_time()
-            && self.get_extensions() == other.get_extensions()
     }
 }
 
@@ -264,11 +253,6 @@ impl FileAttrs {
         self.mtime = mtime;
     }
 
-    pub fn set_extensions(&mut self, extensions: Extensions) {
-        self.flags |= FileAttrsFlags::EXTENSIONS;
-        self.extensions = extensions;
-    }
-
     fn has_attr(&self, flag: FileAttrsFlags) -> bool {
         self.flags.intersects(flag)
     }
@@ -298,18 +282,6 @@ impl FileAttrs {
     pub fn get_time(&self) -> Option<(UnixTimeStamp, UnixTimeStamp)> {
         self.getter_impl(FileAttrsFlags::TIME, (self.atime, self.mtime))
     }
-
-    pub fn get_extensions(&self) -> Option<&Extensions> {
-        self.getter_impl(FileAttrsFlags::EXTENSIONS, &self.extensions)
-    }
-
-    pub fn get_extensions_mut(&mut self) -> Option<&mut Extensions> {
-        if self.has_attr(FileAttrsFlags::EXTENSIONS) {
-            Some(&mut self.extensions)
-        } else {
-            None
-        }
-    }
 }
 
 impl Serialize for FileAttrs {
@@ -335,10 +307,6 @@ impl Serialize for FileAttrs {
         if let Some((atime, mtime)) = self.get_time() {
             tuple_serializer.serialize_element(&atime.into_raw())?;
             tuple_serializer.serialize_element(&mtime.into_raw())?;
-        }
-
-        if let Some(extensions) = self.get_extensions() {
-            tuple_serializer.serialize_element(&extensions)?;
         }
 
         tuple_serializer.end()
@@ -383,9 +351,6 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
     if attrs.has_attr(FileAttrsFlags::TIME) {
         attrs.atime = into_timestamp(iter.get_next()?)?;
         attrs.mtime = into_timestamp(iter.get_next()?)?;
-    }
-    if attrs.has_attr(FileAttrsFlags::EXTENSIONS) {
-        attrs.extensions = iter.get_next()?;
     }
 
     Ok(attrs)
@@ -457,22 +422,14 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
 
 #[cfg(test)]
 mod tests {
-    use super::{Extensions, FileAttrs, FileAttrsFlags, Permissions, UnixTimeStamp};
+    use super::{FileAttrs, FileAttrsFlags, Permissions, UnixTimeStamp};
 
     use super::constants::{
-        SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
-        SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
+        SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_PERMISSIONS, SSH_FILEXFER_ATTR_SIZE,
+        SSH_FILEXFER_ATTR_UIDGID,
     };
 
     // Test getter and setters
-
-    fn get_extensions() -> Extensions {
-        let mut extensions = Extensions::default();
-        for i in 0..100 {
-            extensions.add_extension(&i.to_string(), &(i + 1).to_string());
-        }
-        extensions
-    }
 
     fn get_unix_timestamps() -> (UnixTimeStamp, UnixTimeStamp) {
         (
@@ -511,16 +468,6 @@ mod tests {
         assert_eq!(attrs.get_time().unwrap(), (atime, mtime));
     }
 
-    #[test]
-    fn test_set_get_extensions() {
-        let extensions = get_extensions();
-
-        let mut attrs = FileAttrs::default();
-        attrs.set_extensions(extensions.clone());
-        assert_eq!(attrs.get_extensions().unwrap(), &extensions);
-        assert_eq!(attrs.get_extensions_mut().unwrap(), &extensions);
-    }
-
     // Test Serialize and Deserialize
 
     use serde_test::{assert_tokens, Token};
@@ -538,10 +485,6 @@ mod tests {
             &FileAttrsFlags::TIME,
             &[Token::U32(SSH_FILEXFER_ATTR_ACMODTIME)],
         );
-        assert_tokens(
-            &FileAttrsFlags::EXTENSIONS,
-            &[Token::U32(SSH_FILEXFER_ATTR_EXTENDED)],
-        );
 
         assert_tokens(
             &FileAttrsFlags::all(),
@@ -549,8 +492,7 @@ mod tests {
                 SSH_FILEXFER_ATTR_SIZE
                     | SSH_FILEXFER_ATTR_UIDGID
                     | SSH_FILEXFER_ATTR_PERMISSIONS
-                    | SSH_FILEXFER_ATTR_ACMODTIME
-                    | SSH_FILEXFER_ATTR_EXTENDED,
+                    | SSH_FILEXFER_ATTR_ACMODTIME,
             )],
         );
     }
@@ -618,32 +560,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ser_de_extensions() {
-        let mut extensions = Extensions::default();
-        extensions.add_extension("1", "@");
-
-        assert_tokens(
-            &init_attrs(|attrs| attrs.set_extensions(extensions)),
-            &[
-                Token::Tuple { len: 1 },
-                Token::U32(SSH_FILEXFER_ATTR_EXTENDED),
-                // Start of extensions
-                Token::Tuple { len: 3 },
-                Token::U32(1),
-                Token::BorrowedStr("1"),
-                Token::BorrowedStr("@"),
-                Token::TupleEnd,
-                // End of extensions
-                Token::TupleEnd,
-            ],
-        );
-    }
-
-    #[test]
     fn test_ser_de_all() {
-        let mut extensions = Extensions::default();
-        extensions.add_extension("1", "@");
-
         let (atime, mtime) = get_unix_timestamps();
 
         assert_tokens(
@@ -652,7 +569,6 @@ mod tests {
                 attrs.set_id(u32::MAX, 1000);
                 attrs.set_permissions(Permissions::READ_BY_OWNER);
                 attrs.set_time(atime, mtime);
-                attrs.set_extensions(extensions);
             }),
             &[
                 Token::Tuple { len: 1 },
@@ -660,8 +576,7 @@ mod tests {
                     SSH_FILEXFER_ATTR_SIZE
                         | SSH_FILEXFER_ATTR_UIDGID
                         | SSH_FILEXFER_ATTR_PERMISSIONS
-                        | SSH_FILEXFER_ATTR_ACMODTIME
-                        | SSH_FILEXFER_ATTR_EXTENDED,
+                        | SSH_FILEXFER_ATTR_ACMODTIME,
                 ),
                 Token::U64(2333),                              // size
                 Token::U32(u32::MAX),                          // uid
@@ -669,13 +584,6 @@ mod tests {
                 Token::U32(Permissions::READ_BY_OWNER.bits()), // permissions
                 Token::U32(atime.into_raw()),                  // atime
                 Token::U32(mtime.into_raw()),                  // mtime
-                // Start of extensions
-                Token::Tuple { len: 3 },
-                Token::U32(1),
-                Token::BorrowedStr("1"),
-                Token::BorrowedStr("@"),
-                Token::TupleEnd,
-                // End of extensions
                 Token::TupleEnd,
             ],
         );
