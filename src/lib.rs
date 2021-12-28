@@ -9,7 +9,6 @@ mod seq_iter;
 mod visitor;
 
 pub mod constants;
-pub mod extensions;
 pub mod file_attrs;
 pub mod request;
 pub mod response;
