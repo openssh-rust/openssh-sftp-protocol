@@ -23,6 +23,7 @@ bitflags! {
         const ID = 1 << 1;
         const PERMISSIONS = 1 << 2;
         const TIME = 1 << 3;
+        const EXTENSIONS = 1 << 4;
     }
 }
 impl Serialize for FileAttrsFlags {
@@ -55,8 +56,8 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
         deserializer: D,
     ) -> Result<Self, D::Error> {
         use constants::{
-            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_PERMISSIONS, SSH_FILEXFER_ATTR_SIZE,
-            SSH_FILEXFER_ATTR_UIDGID,
+            SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_EXTENDED, SSH_FILEXFER_ATTR_PERMISSIONS,
+            SSH_FILEXFER_ATTR_SIZE, SSH_FILEXFER_ATTR_UIDGID,
         };
 
         let flags = u32::deserialize(deserializer)?;
@@ -75,6 +76,9 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
         }
         if has_attr(SSH_FILEXFER_ATTR_ACMODTIME) {
             file_attrs_flags |= FileAttrsFlags::TIME;
+        }
+        if has_attr(SSH_FILEXFER_ATTR_EXTENDED) {
+            file_attrs_flags |= FileAttrsFlags::EXTENSIONS;
         }
 
         Ok(file_attrs_flags)
@@ -353,6 +357,16 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
         attrs.mtime = into_timestamp(iter.get_next()?)?;
     }
 
+    if attrs.has_attr(FileAttrsFlags::EXTENSIONS) {
+        let extension_pairs: u32 = iter.get_next()?;
+        for _i in 0..extension_pairs {
+            let _name: &[u8] = iter.get_next()?;
+            let _value: &[u8] = iter.get_next()?;
+        }
+    }
+
+    attrs.flags.remove(FileAttrsFlags::EXTENSIONS);
+
     Ok(attrs)
 });
 
@@ -484,16 +498,6 @@ mod tests {
         assert_tokens(
             &FileAttrsFlags::TIME,
             &[Token::U32(SSH_FILEXFER_ATTR_ACMODTIME)],
-        );
-
-        assert_tokens(
-            &FileAttrsFlags::all(),
-            &[Token::U32(
-                SSH_FILEXFER_ATTR_SIZE
-                    | SSH_FILEXFER_ATTR_UIDGID
-                    | SSH_FILEXFER_ATTR_PERMISSIONS
-                    | SSH_FILEXFER_ATTR_ACMODTIME,
-            )],
         );
     }
 
