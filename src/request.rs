@@ -1,4 +1,4 @@
-use super::{constants, extensions::Extensions, file_attrs::FileAttrs, Handle};
+use super::{constants, file_attrs::FileAttrs, Handle};
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -9,17 +9,11 @@ use serde::{Serialize, Serializer};
 /// Response with `Response::Version`.
 pub struct Hello {
     pub version: u32,
-    pub extensions: Extensions,
 }
 
 impl Serialize for Hello {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        (
-            constants::SSH_FXP_INIT,
-            self.version,
-            self.extensions.get_strings().iter(),
-        )
-            .serialize(serializer)
+        (constants::SSH_FXP_INIT, self.version).serialize(serializer)
     }
 }
 
