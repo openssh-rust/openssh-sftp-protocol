@@ -333,12 +333,7 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
     }
     if attrs.has_attr(FileAttrsFlags::PERMISSIONS) {
         let raw_perm: u32 = iter.get_next()?;
-        attrs.permissions = Permissions::from_bits(raw_perm).ok_or_else(|| {
-            V::Error::invalid_value(
-                Unexpected::Unsigned(raw_perm as u64),
-                &"Invalid permission: Does not confirm to value specified in POSIX",
-            )
-        })?;
+        attrs.permissions = Permissions::from_bits_truncate(raw_perm);
     }
 
     let into_timestamp = |elapsed: u32| {
