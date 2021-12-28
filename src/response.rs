@@ -10,7 +10,7 @@ use serde::Deserialize;
 use vec_strings::TwoStrs;
 
 /// The extension that the sftp-server supports.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Extensions {
     pub posix_rename: bool,
     pub statvfs: bool,
@@ -22,7 +22,7 @@ pub struct Extensions {
     pub expand_path: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ServerVersion {
     pub version: u32,
     pub extensions: Extensions,
