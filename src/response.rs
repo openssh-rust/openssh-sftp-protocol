@@ -2,6 +2,7 @@ use super::file_attrs::{FileAttrs, FileAttrsBox};
 use super::{constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned};
 
 use core::fmt;
+use std::path::Path;
 use std::str::from_utf8;
 
 use serde::de::{Deserializer, Error, Unexpected};
@@ -290,7 +291,7 @@ impl fmt::Debug for ErrMsg {
 /// Entry in ResponseInner::Name
 #[derive(Debug, Deserialize, Clone)]
 pub struct NameEntry {
-    pub filename: Box<str>,
+    pub filename: Box<Path>,
 
     /// The format of the `longname' field is unspecified by this protocol.
     ///
