@@ -1,15 +1,26 @@
 use super::file_attrs::{FileAttrs, FileAttrsBox};
-use super::{
-    constants, extensions::Extensions, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned,
-};
+use super::{constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned};
 
 use core::fmt;
+use std::str::from_utf8;
 
 use serde::de::{Deserializer, Error, Unexpected};
 use serde::Deserialize;
-use ssh_format::from_bytes;
 
-use vec_strings::{StringsNoIndex, TwoStrs};
+use vec_strings::TwoStrs;
+
+/// The extension that the sftp-server supports.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Extensions {
+    pub posix_rename: bool,
+    pub statvfs: bool,
+    pub fstatvfs: bool,
+    pub hardlink: bool,
+    pub fsync: bool,
+    pub lsetstat: bool,
+    pub limits: bool,
+    pub expand_path: bool,
+}
 
 #[derive(Debug, Clone)]
 pub struct ServerVersion {
@@ -20,30 +31,73 @@ impl ServerVersion {
     /// * `bytes` - should not include the initial 4-byte which server
     ///   as the length of the whole packet.
     pub fn deserialize(bytes: &[u8]) -> ssh_format::Result<Self> {
-        let ((packet_type, version), mut bytes): ((u8, _), _) = from_bytes(bytes)?;
+        macro_rules! ok_or_continue {
+            ($res:expr) => {
+                if let Ok(val) = $res {
+                    val
+                } else {
+                    continue;
+                }
+            };
+        }
 
+        let mut de = ssh_format::Deserializer::from_bytes(bytes);
+
+        let packet_type = u8::deserialize(&mut de)?;
         if packet_type != constants::SSH_FXP_VERSION {
             return Err(ssh_format::Error::custom("Unexpected response"));
+        };
+
+        let version = u32::deserialize(&mut de)?;
+
+        let mut extensions = Extensions::default();
+        while !de.into_inner().is_empty() {
+            // sftp v3 does not specify the encoding of extension names and revisions.
+            //
+            // Read both name and revision before continue parsing them
+            // so that if the current iteration is skipped by 'continue',
+            // the next iteration can continue read in extensions without error.
+            let name = <&[u8]>::deserialize(&mut de)?;
+            let revision = <&[u8]>::deserialize(&mut de)?;
+
+            let name = ok_or_continue!(from_utf8(name));
+            let revision = ok_or_continue!(from_utf8(revision));
+            let revision: u64 = ok_or_continue!(revision.parse());
+
+            match (name, revision) {
+                constants::EXT_NAME_POSIX_RENAME => {
+                    extensions.posix_rename = true;
+                }
+                constants::EXT_NAME_STATVFS => {
+                    extensions.statvfs = true;
+                }
+                constants::EXT_NAME_FSTATVFS => {
+                    extensions.fstatvfs = true;
+                }
+                constants::EXT_NAME_HARDLINK => {
+                    extensions.hardlink = true;
+                }
+                constants::EXT_NAME_FSYNC => {
+                    extensions.fsync = true;
+                }
+                constants::EXT_NAME_LSETSTAT => {
+                    extensions.lsetstat = true;
+                }
+                constants::EXT_NAME_LIMITS => {
+                    extensions.limits = true;
+                }
+                constants::EXT_NAME_EXPAND_PATH => {
+                    extensions.expand_path = true;
+                }
+
+                _ => (),
+            }
         }
 
-        let mut strings = StringsNoIndex::new();
-        while !bytes.is_empty() {
-            let (string, bytes_left) = from_bytes(bytes)?;
-            strings.push(string);
-
-            bytes = bytes_left;
-        }
-
-        strings.shrink_to_fit();
-
-        if let Some(extensions) = Extensions::new(strings) {
-            Ok(Self {
-                version,
-                extensions,
-            })
-        } else {
-            Err(ssh_format::Error::Eof)
-        }
+        Ok(Self {
+            version,
+            extensions,
+        })
     }
 }
 
