@@ -10,9 +10,9 @@ macro_rules! def_u32_constants {
     };
 }
 
-macro_rules! def_str_constants {
-    ( $name:ident, $val:literal ) => {
-        pub const $name: &'static str = $val;
+macro_rules! def_ext_constants {
+    ( $valname:ident, $name:literal, $revision:literal ) => {
+        pub const $valname: (&'static str, u64) = ($name, $revision);
     };
 }
 
@@ -88,11 +88,11 @@ def_u32_constants!(SFTP_EXT_LIMITS, 0x00000040);
 def_u32_constants!(SFTP_EXT_PATH_EXPAND, 0x00000080);
 
 // extension names
-def_str_constants!(EXT_NAME_POSIX_RENAME, "posix-rename@openssh.com");
-def_str_constants!(EXT_NAME_STATVFS, "statvfs@openssh.com");
-def_str_constants!(EXT_NAME_FSTATVFS, "fstatvfs@openssh.com");
-def_str_constants!(EXT_NAME_HARDLINK, "hardlink@openssh.com");
-def_str_constants!(EXT_NAME_FSYNC, "fsync@openssh.com");
-def_str_constants!(EXT_NAME_LSETSTAT, "lsetstat@openssh.com");
-def_str_constants!(EXT_NAME_LIMITS, "limits@openssh.com");
-def_str_constants!(EXT_NAME_EXPAND_PATH, "expand-path@openssh.com");
+def_ext_constants!(EXT_NAME_POSIX_RENAME, "posix-rename@openssh.com", 1);
+def_ext_constants!(EXT_NAME_STATVFS, "statvfs@openssh.com", 2);
+def_ext_constants!(EXT_NAME_FSTATVFS, "fstatvfs@openssh.com", 2);
+def_ext_constants!(EXT_NAME_HARDLINK, "hardlink@openssh.com", 1);
+def_ext_constants!(EXT_NAME_FSYNC, "fsync@openssh.com", 1);
+def_ext_constants!(EXT_NAME_LSETSTAT, "lsetstat@openssh.com", 1);
+def_ext_constants!(EXT_NAME_LIMITS, "limits@openssh.com", 1);
+def_ext_constants!(EXT_NAME_EXPAND_PATH, "expand-path@openssh.com", 1);
