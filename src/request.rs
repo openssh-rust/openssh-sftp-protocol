@@ -120,6 +120,13 @@ pub enum RequestInner<'a> {
     /// Extension, only available if it is constants::EXT_NAME_FSYNC
     /// is returned by `response::HelloVersion`
     Fsync(Cow<'a, Handle>),
+
+    /// Extension, only available if it is constants::EXT_NAME_HARDLINK
+    /// is returned by `response::HelloVersion`
+    HardLink {
+        oldpath: Cow<'a, Path>,
+        newpath: Cow<'a, Path>,
+    },
 }
 
 #[derive(Debug)]
@@ -216,6 +223,15 @@ impl Serialize for Request<'_> {
                 request_id,
                 constants::EXT_NAME_FSYNC.0,
                 handle,
+            )
+                .serialize(serializer),
+
+            HardLink { oldpath, newpath } => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_HARDLINK.0,
+                oldpath,
+                newpath,
             )
                 .serialize(serializer),
         }
