@@ -128,6 +128,11 @@ impl Response {
     pub fn is_data(packet_type: u8) -> bool {
         packet_type == constants::SSH_FXP_DATA
     }
+
+    /// Return true if the response is a extended reply response.
+    pub fn is_extended_reply(packet_type: u8) -> bool {
+        packet_type == constants::SSH_FXP_EXTENDED_REPLY
+    }
 }
 
 impl_visitor!(
