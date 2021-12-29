@@ -116,6 +116,10 @@ pub enum RequestInner<'a> {
     /// Extension, only available if it is constants::EXT_NAME_LSETSTAT
     /// is returned by `response::HelloVersion`
     Lsetstat(Cow<'a, Path>, FileAttrs),
+
+    /// Extension, only available if it is constants::EXT_NAME_FSYNC
+    /// is returned by `response::HelloVersion`
+    Fsync(Cow<'a, Handle>),
 }
 
 #[derive(Debug)]
@@ -204,6 +208,14 @@ impl Serialize for Request<'_> {
                 constants::EXT_NAME_LSETSTAT.0,
                 path,
                 attrs,
+            )
+                .serialize(serializer),
+
+            Fsync(handle) => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_FSYNC.0,
+                handle,
             )
                 .serialize(serializer),
         }
