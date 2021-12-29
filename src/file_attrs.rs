@@ -213,7 +213,7 @@ impl_visitor!(
     }
 );
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct FileAttrs {
     flags: FileAttrsFlags,
 
