@@ -124,9 +124,7 @@ pub struct Response {
 }
 
 impl Response {
-    /// Return Some(true) if the packet is data,
-    /// Some(false) if not,
-    /// None if it isn't a valid response.
+    /// Return true if the response is a data response.
     pub fn is_data(packet_type: u8) -> bool {
         packet_type == constants::SSH_FXP_DATA
     }
