@@ -108,6 +108,10 @@ pub enum RequestInner<'a> {
     /// Extension, only available if it is constants::EXT_NAME_LIMITS
     /// is returned by `response::HelloVersion`
     Limits,
+
+    /// Extension, only available if it is constants::EXT_NAME_EXPAND_PATH
+    /// is returned by `response::HelloVersion`
+    ExpandPath(Cow<'a, Path>),
 }
 
 #[derive(Debug)]
@@ -179,6 +183,14 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_LIMITS.0,
+            )
+                .serialize(serializer),
+
+            ExpandPath(path) => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_EXPAND_PATH.0,
+                path,
             )
                 .serialize(serializer),
         }
