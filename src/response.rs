@@ -112,8 +112,6 @@ pub enum ResponseInner {
 
     Handle(HandleOwned),
 
-    Data,
-
     Name(Box<[NameEntry]>),
 
     Attrs(FileAttrsBox),
@@ -155,8 +153,6 @@ impl_visitor!(
             },
 
             SSH_FXP_HANDLE => Handle(iter.get_next()?),
-
-            SSH_FXP_DATA => Data,
 
             SSH_FXP_NAME => {
                 let len: u32 = iter.get_next()?;
