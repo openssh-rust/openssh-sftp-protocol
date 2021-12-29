@@ -8,6 +8,8 @@ use core::ops::{Deref, DerefMut};
 use std::time::{Duration, SystemTime, SystemTimeError};
 
 use bitflags::bitflags;
+use num_derive::FromPrimitive;
+use num_traits::cast::FromPrimitive;
 
 use serde::de::{Error, Unexpected};
 use serde::ser::{SerializeTuple, Serializer};
@@ -131,6 +133,18 @@ bitflags! {
     }
 }
 
+#[derive(Debug, Clone, Copy, FromPrimitive, Eq, PartialEq)]
+#[repr(u32)]
+pub enum FileType {
+    Socket = libc::S_IFSOCK,
+    Symlink = libc::S_IFLNK,
+    RegularFile = libc::S_IFREG,
+    BlockDevice = libc::S_IFBLK,
+    Directory = libc::S_IFDIR,
+    CharacterDevice = libc::S_IFCHR,
+    FIFO = libc::S_IFIFO,
+}
+
 /// Default value is 1970-01-01 00:00:00 UTC.
 ///
 /// UnixTimeStamp stores number of seconds elapsed since 1970-01-01 00:00:00 UTC
@@ -211,7 +225,7 @@ pub struct FileAttrs {
     gid: u32,
 
     /// present only if flag SSH_FILEXFER_ATTR_PERMISSIONS
-    permissions: Permissions,
+    st_mode: u32,
 
     /// present only if flag SSH_FILEXFER_ATTR_ACMODTIME
     atime: UnixTimeStamp,
@@ -223,6 +237,7 @@ impl PartialEq for FileAttrs {
         self.get_size() == other.get_size()
             && self.get_id() == other.get_id()
             && self.get_permissions() == other.get_permissions()
+            && self.get_filetype() == other.get_filetype()
             && self.get_time() == other.get_time()
     }
 }
@@ -248,7 +263,8 @@ impl FileAttrs {
 
     pub fn set_permissions(&mut self, permissions: Permissions) {
         self.flags |= FileAttrsFlags::PERMISSIONS;
-        self.permissions = permissions;
+        let filetype = self.st_mode & libc::S_IFMT;
+        self.st_mode = filetype | permissions.bits();
     }
 
     pub fn set_time(&mut self, atime: UnixTimeStamp, mtime: UnixTimeStamp) {
@@ -261,30 +277,46 @@ impl FileAttrs {
         self.flags.intersects(flag)
     }
 
-    fn getter_impl<T>(&self, flag: FileAttrsFlags, val: T) -> Option<T> {
+    fn getter_impl<T>(&self, flag: FileAttrsFlags, f: impl FnOnce() -> T) -> Option<T> {
         if self.has_attr(flag) {
-            Some(val)
+            Some(f())
         } else {
             None
         }
     }
 
     pub fn get_size(&self) -> Option<u64> {
-        self.getter_impl(FileAttrsFlags::SIZE, self.size)
+        self.getter_impl(FileAttrsFlags::SIZE, || self.size)
     }
 
     /// Return uid and gid
     pub fn get_id(&self) -> Option<(u32, u32)> {
-        self.getter_impl(FileAttrsFlags::ID, (self.uid, self.gid))
+        self.getter_impl(FileAttrsFlags::ID, || (self.uid, self.gid))
     }
 
     pub fn get_permissions(&self) -> Option<Permissions> {
-        self.getter_impl(FileAttrsFlags::PERMISSIONS, self.permissions)
+        self.getter_impl(FileAttrsFlags::PERMISSIONS, || {
+            Permissions::from_bits_truncate(self.st_mode)
+        })
+    }
+
+    /// filetype is only set by the sftp-server.
+    pub fn get_filetype(&self) -> Option<FileType> {
+        self.getter_impl(FileAttrsFlags::PERMISSIONS, || {
+            let filetype = self.st_mode & libc::S_IFMT;
+
+            if filetype == 0 {
+                None
+            } else {
+                Some(FileType::from_u32(filetype).unwrap())
+            }
+        })
+        .flatten()
     }
 
     /// Return atime and mtime
     pub fn get_time(&self) -> Option<(UnixTimeStamp, UnixTimeStamp)> {
-        self.getter_impl(FileAttrsFlags::TIME, (self.atime, self.mtime))
+        self.getter_impl(FileAttrsFlags::TIME, || (self.atime, self.mtime))
     }
 }
 
@@ -332,8 +364,17 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
         attrs.gid = iter.get_next()?;
     }
     if attrs.has_attr(FileAttrsFlags::PERMISSIONS) {
-        let raw_perm: u32 = iter.get_next()?;
-        attrs.permissions = Permissions::from_bits_truncate(raw_perm);
+        attrs.st_mode = iter.get_next()?;
+
+        let filetype = attrs.st_mode & libc::S_IFMT;
+
+        // If filetype is specified, then make sure it is valid.
+        if filetype != 0 && FileType::from_u32(filetype).is_none() {
+            return Err(V::Error::invalid_value(
+                Unexpected::Unsigned(filetype as u64),
+                &"Expected valid filetype specified in POSIX",
+            ));
+        }
     }
 
     let into_timestamp = |elapsed: u32| {
@@ -431,7 +472,7 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
 
 #[cfg(test)]
 mod tests {
-    use super::{FileAttrs, FileAttrsFlags, Permissions, UnixTimeStamp};
+    use super::{FileAttrs, FileAttrsFlags, FileType, Permissions, UnixTimeStamp};
 
     use super::constants::{
         SSH_FILEXFER_ATTR_ACMODTIME, SSH_FILEXFER_ATTR_PERMISSIONS, SSH_FILEXFER_ATTR_SIZE,
@@ -479,7 +520,7 @@ mod tests {
 
     // Test Serialize and Deserialize
 
-    use serde_test::{assert_tokens, Token};
+    use serde_test::{assert_de_tokens, assert_tokens, Token};
 
     #[test]
     fn test_file_attr_flags() {
@@ -530,13 +571,26 @@ mod tests {
     }
 
     #[test]
-    fn test_ser_de_permissions() {
+    fn test_ser_de_permissions_and_filetype() {
         assert_tokens(
             &init_attrs(|attrs| attrs.set_permissions(Permissions::WRITE_BY_OTHER)),
             &[
                 Token::Tuple { len: 1 },
                 Token::U32(SSH_FILEXFER_ATTR_PERMISSIONS),
                 Token::U32(Permissions::WRITE_BY_OTHER.bits()),
+                Token::TupleEnd,
+            ],
+        );
+
+        assert_de_tokens(
+            &init_attrs(|attrs| {
+                attrs.set_permissions(Permissions::WRITE_BY_OTHER);
+                attrs.st_mode = Permissions::WRITE_BY_OTHER.bits() | FileType::Socket as u32;
+            }),
+            &[
+                Token::Tuple { len: 1 },
+                Token::U32(SSH_FILEXFER_ATTR_PERMISSIONS),
+                Token::U32(Permissions::WRITE_BY_OTHER.bits() | FileType::Socket as u32),
                 Token::TupleEnd,
             ],
         );
