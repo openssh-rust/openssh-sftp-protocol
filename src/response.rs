@@ -164,7 +164,11 @@ impl_visitor!(
                 let mut entries = Vec::<NameEntry>::with_capacity(len);
 
                 for _ in 0..len {
-                    entries.push(iter.get_next()?);
+                    let filename: Box<Path> = iter.get_next()?;
+                    let _longname: &[u8] = iter.get_next()?;
+                    let attrs: FileAttrs = iter.get_next()?;
+
+                    entries.push(NameEntry { filename, attrs });
                 }
 
                 Name(entries.into_boxed_slice())
@@ -289,23 +293,9 @@ impl fmt::Debug for ErrMsg {
 }
 
 /// Entry in ResponseInner::Name
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct NameEntry {
     pub filename: Box<Path>,
 
-    /// The format of the `longname' field is unspecified by this protocol.
-    ///
-    /// It MUST be suitable for use in the output of a directory listing
-    /// command (in fact, the recommended operation for a directory listing
-    /// command is to simply display this data).
-    ///
-    /// However, clients SHOULD NOT attempt to parse the longname field for file
-    /// attributes, they SHOULD use the attrs field instead.
-    ///
-    /// The recommended format for the longname field is as follows:
-    ///
-    /// -rwxr-xr-x   1 mjos     staff      348911 Mar 25 14:29 t-filexfer
-    /// 1234567890 123 12345678 12345678 12345678 123456789012
-    pub longname: Box<str>,
     pub attrs: FileAttrs,
 }
