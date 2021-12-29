@@ -104,6 +104,10 @@ pub enum RequestInner<'a> {
     /// Responds with ResponseInner::Name with a name and dummy attribute value
     /// or ResponseInner::Status on error.
     Realpath(Cow<'a, Path>),
+
+    /// Extension, only available if it is constants::EXT_NAME_LIMITS
+    /// is returned by `response::HelloVersion`
+    Limits,
 }
 
 #[derive(Debug)]
@@ -170,6 +174,13 @@ impl Serialize for Request<'_> {
             }
 
             Realpath(path) => (constants::SSH_FXP_REALPATH, request_id, path).serialize(serializer),
+
+            Limits => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_LIMITS.0,
+            )
+                .serialize(serializer),
         }
     }
 }
