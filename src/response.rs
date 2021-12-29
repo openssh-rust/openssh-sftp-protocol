@@ -102,6 +102,16 @@ impl ServerVersion {
     }
 }
 
+/// Payload of extended reply response when `ResponseInner::Limits`
+/// is sent.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
+pub struct Limits {
+    packet_len: u64,
+    read_len: u64,
+    write_len: u64,
+    open_handles: u64,
+}
+
 #[derive(Debug)]
 pub enum ResponseInner {
     Status {
