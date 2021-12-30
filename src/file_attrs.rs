@@ -433,7 +433,7 @@ impl Default for FileAttrsBox {
 impl FileAttrsBox {
     /// Return a shared arena that can be used to allocate
     /// [`FileAttrs`] efficiently.
-    pub fn get_shared_arena() -> &'static SharedArena<FileAttrs> {
+    fn get_shared_arena() -> &'static SharedArena<FileAttrs> {
         static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
 
         ARENA.get_or_init(SharedArena::new)
