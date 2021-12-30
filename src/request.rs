@@ -114,13 +114,19 @@ pub enum RequestInner<'a> {
     /// Same response as `ResponseInner::Realpath`.
     ///
     /// Extension, only available if it is `Extensions::expand_path`
-    /// is returned by `response::HelloVersion`
+    /// is returned by `response::HelloVersion`.
+    ///
+    /// This supports canonicalisation of relative paths and those that need
+    /// tilde-expansion, i.e. "~", "~/..." and "~user/...".
+    ///
+    /// These paths are expanded using shell-lilke rules and the resultant path
+    /// is canonicalised similarly to `RequestInner::Realpath`.
     ExpandPath(Cow<'a, Path>),
 
     /// Same response as `ResponseInner::Setstat`.
     ///
     /// Extension, only available if it is `Extensions::lsetstat`
-    /// is returned by `response::HelloVersion`
+    /// is returned by `response::HelloVersion`.
     Lsetstat(Cow<'a, Path>, FileAttrs),
 
     /// Responds with `ResponseInner::Status`.
