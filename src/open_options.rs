@@ -36,7 +36,7 @@ impl OpenOptions {
         self
     }
 
-    pub fn open(self, filename: Cow<'_, Path>) -> OpenFile<'_> {
+    pub const fn open(self, filename: Cow<'_, Path>) -> OpenFile<'_> {
         let mut flags: u32 = 0;
 
         if self.read {
@@ -54,11 +54,11 @@ impl OpenOptions {
         OpenFile {
             filename,
             flags,
-            attrs: FileAttrs::default(),
+            attrs: FileAttrs::new(),
         }
     }
 
-    pub fn create(
+    pub const fn create(
         self,
         filename: Cow<'_, Path>,
         flags: CreateFlags,
