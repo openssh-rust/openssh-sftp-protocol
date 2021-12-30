@@ -432,7 +432,7 @@ impl FileAttrsBox {
 
 impl Clone for FileAttrsBox {
     fn clone(&self) -> Self {
-        Self::new(self.0.clone())
+        Self::new(*self.0)
     }
 }
 
