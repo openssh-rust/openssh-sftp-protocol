@@ -107,31 +107,31 @@ pub enum RequestInner<'a> {
 
     /// Responds with extended reply, with payload `response::Limits`.
     ///
-    /// Extension, only available if it is constants::EXT_NAME_LIMITS
+    /// Extension, only available if it is `Extensions::limits`
     /// is returned by `response::HelloVersion`
     Limits,
 
     /// Same response as `ResponseInner::Realpath`.
     ///
-    /// Extension, only available if it is constants::EXT_NAME_EXPAND_PATH
+    /// Extension, only available if it is `Extensions::expand_path`
     /// is returned by `response::HelloVersion`
     ExpandPath(Cow<'a, Path>),
 
     /// Same response as `ResponseInner::Setstat`.
     ///
-    /// Extension, only available if it is constants::EXT_NAME_LSETSTAT
+    /// Extension, only available if it is `Extensions::lsetstat`
     /// is returned by `response::HelloVersion`
     Lsetstat(Cow<'a, Path>, FileAttrs),
 
     /// Responds with `ResponseInner::Status`.
     ///
-    /// Extension, only available if it is constants::EXT_NAME_FSYNC
+    /// Extension, only available if it is `Extensions::fsync`
     /// is returned by `response::HelloVersion`
     Fsync(Cow<'a, Handle>),
 
     /// Responds with `ResponseInner::Status`.
     ///
-    /// Extension, only available if it is constants::EXT_NAME_HARDLINK
+    /// Extension, only available if it is `Extensions::hardlink`
     /// is returned by `response::HelloVersion`
     HardLink {
         oldpath: Cow<'a, Path>,
