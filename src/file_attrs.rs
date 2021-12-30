@@ -250,9 +250,19 @@ impl PartialEq for FileAttrs {
 impl Eq for FileAttrs {}
 
 impl FileAttrs {
-    #[inline]
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self {
+            flags: FileAttrsFlags::empty(),
+            size: 0,
+
+            uid: 0,
+            gid: 0,
+
+            st_mode: 0,
+
+            atime: UnixTimeStamp::unix_epoch(),
+            mtime: UnixTimeStamp::unix_epoch(),
+        }
     }
 
     pub fn set_size(&mut self, size: u64) {
