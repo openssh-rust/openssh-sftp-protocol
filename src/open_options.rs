@@ -65,7 +65,7 @@ impl OpenOptions {
         attrs: FileAttrs,
     ) -> OpenFile<'_> {
         let mut openfile = self.open(filename);
-        openfile.flags |= flags as u32;
+        openfile.flags |= constants::SSH_FXF_CREAT | flags as u32;
         openfile.attrs = attrs;
         openfile
     }
