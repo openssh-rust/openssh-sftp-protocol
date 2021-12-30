@@ -225,6 +225,9 @@ pub enum ErrorCode {
 
     /// May be returned if a badly formatted packet or protocol
     /// incompatibility is detected.
+    ///
+    /// If the handle is opened read only, but write flag is required,
+    /// then `BadMessage` might be returned, vice versa.
     BadMessage,
 
     /// Indicates that an attempt was made to perform an operation which
