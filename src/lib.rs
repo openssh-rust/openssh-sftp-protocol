@@ -10,6 +10,7 @@ mod visitor;
 
 pub mod constants;
 pub mod file_attrs;
+pub mod open_options;
 pub mod request;
 pub mod response;
 
