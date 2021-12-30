@@ -18,12 +18,13 @@ impl Serialize for Hello {
 
 #[derive(Debug)]
 pub enum RequestInner<'a> {
-    /// The response to this message will be either ResponseInner::Handle
-    /// (if the operation is successful) or ResponseInner::Status
+    /// The response to this message will be either
+    /// [`crate::response::ResponseInner::Handle`] (if the operation is successful) or
+    /// [`crate::response::ResponseInner::Status`]
     /// (if the operation fails).
     Open(OpenFile<'a>),
 
-    /// Response will be RequestInner::Status.
+    /// Response will be [`crate::response::ResponseInner::Status`].
     Close(Cow<'a, Handle>),
 
     /// In response to this request, the server will read as many bytes as it
@@ -31,7 +32,7 @@ pub enum RequestInner<'a> {
     /// message.
     ///
     /// If an error occurs or EOF is encountered before reading any
-    /// data, the server will respond with ResponseInner::Status.
+    /// data, the server will respond with [`crate::response::ResponseInner::Status`].
     ///
     /// For normal disk files, it is guaranteed that this will read the specified
     /// number of bytes, or up to end of file.
@@ -43,110 +44,115 @@ pub enum RequestInner<'a> {
         len: u32,
     },
 
-    /// Responds with a ResponseInner::Status message.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Remove(Cow<'a, Path>),
 
-    /// Responds with a ResponseInner::Status message.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Rename {
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,
     },
 
-    /// Responds with a ResponseInner::Status message.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Mkdir {
         path: Cow<'a, Path>,
         attrs: FileAttrs,
     },
 
-    /// Responds with a ResponseInner::Status message.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Rmdir(Cow<'a, Path>),
 
-    /// Responds with a ResponseInner::Handle or a ResponseInner::Status message.
+    /// Responds with a [`crate::response::ResponseInner::Handle`]
+    /// or a [`crate::response::ResponseInner::Status`] message.
     Opendir(Cow<'a, Path>),
 
-    /// Responds with a ResponseInner::Name or a ResponseInner::Status message
+    /// Responds with a [`crate::response::ResponseInner::Name`] or
+    /// a [`crate::response::ResponseInner::Status`] message
     Readdir(Cow<'a, Handle>),
 
-    /// Responds with ResponseInner::Attrs or ResponseInner::Status.
+    /// Responds with [`crate::response::ResponseInner::Attrs`] or
+    /// [`crate::response::ResponseInner::Status`].
     Stat(Cow<'a, Path>),
 
-    /// Responds with ResponseInner::Attrs or ResponseInner::Status.
+    /// Responds with [`crate::response::ResponseInner::Attrs`] or
+    /// [`crate::response::ResponseInner::Status`].
     ///
     /// Does not follow symlink.
     Lstat(Cow<'a, Path>),
 
-    /// Responds with ResponseInner::Attrs or ResponseInner::Status.
+    /// Responds with [`crate::response::ResponseInner::Attrs`] or
+    /// [`crate::response::ResponseInner::Status`].
     Fstat(Cow<'a, Handle>),
 
-    /// Responds with ResponseInner::Status.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Setstat {
         path: Cow<'a, Path>,
         attrs: FileAttrs,
     },
 
-    /// Responds with ResponseInner::Status.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Fsetstat {
         handle: Cow<'a, Handle>,
         attrs: FileAttrs,
     },
 
-    /// Responds with ResponseInner::Name with a name and dummy attribute value
-    /// or ResponseInner::Status on error.
+    /// Responds with [`crate::response::ResponseInner::Name`] with a name and
+    /// dummy attribute value or [`crate::response::ResponseInner::Status`] on error.
     Readlink(Cow<'a, Path>),
 
-    /// Responds with ResponseInner::Status.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     Symlink {
         linkpath: Cow<'a, Path>,
         targetpath: Cow<'a, Path>,
     },
 
-    /// Responds with ResponseInner::Name with a name and dummy attribute value
-    /// or ResponseInner::Status on error.
+    /// Responds with [`crate::response::ResponseInner::Name`] with a name and
+    /// dummy attribute value or [`crate::response::ResponseInner::Status`] on error.
     Realpath(Cow<'a, Path>),
 
-    /// Responds with extended reply, with payload `response::Limits`.
+    /// Responds with extended reply, with payload [`crate::response::Limits`].
     ///
-    /// Extension, only available if it is `Extensions::limits`
-    /// is returned by `response::HelloVersion`
+    /// Extension, only available if it is [`crate::response::Extensions::limits`]
+    /// is returned by [`crate::response::ServerVersion`].
     Limits,
 
-    /// Same response as `ResponseInner::Realpath`.
+    /// Same response as [`RequestInner::Realpath`].
     ///
-    /// Extension, only available if it is `Extensions::expand_path`
-    /// is returned by `response::HelloVersion`.
+    /// Extension, only available if it is [`crate::response::Extensions::expand_path`]
+    /// is returned by [`crate::response::ServerVersion`].
     ///
     /// This supports canonicalisation of relative paths and those that need
     /// tilde-expansion, i.e. "~", "~/..." and "~user/...".
     ///
     /// These paths are expanded using shell-lilke rules and the resultant path
-    /// is canonicalised similarly to `RequestInner::Realpath`.
+    /// is canonicalised similarly to [`RequestInner::Realpath`].
     ExpandPath(Cow<'a, Path>),
 
-    /// Same response as `ResponseInner::Setstat`.
+    /// Same response as [`RequestInner::Setstat`].
     ///
-    /// Extension, only available if it is `Extensions::lsetstat`
-    /// is returned by `response::HelloVersion`.
+    /// Extension, only available if it is [`crate::response::Extensions::lsetstat`]
+    /// is returned by [`crate::response::ServerVersion`].
     Lsetstat(Cow<'a, Path>, FileAttrs),
 
-    /// Responds with `ResponseInner::Status`.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     ///
-    /// Extension, only available if it is `Extensions::fsync`
-    /// is returned by `response::HelloVersion`
+    /// Extension, only available if it is [`crate::response::Extensions::fsync`]
+    /// is returned by [`crate::response::ServerVersion`].
     Fsync(Cow<'a, Handle>),
 
-    /// Responds with `ResponseInner::Status`.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     ///
-    /// Extension, only available if it is `Extensions::hardlink`
-    /// is returned by `response::HelloVersion`
+    /// Extension, only available if it is [`crate::response::Extensions::hardlink`]
+    /// is returned by [`crate::response::ServerVersion`].
     HardLink {
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,
     },
 
-    /// Responds with `ResponseInner::Status`.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     ///
-    /// Extension, only available if it is `Extensions::posix_rename`
-    /// is returned by `response::HelloVersion`
+    /// Extension, only available if it is [`crate::response::Extensions::posix_rename`]
+    /// is returned by [`crate::response::ServerVersion`].
     PosixRename {
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,

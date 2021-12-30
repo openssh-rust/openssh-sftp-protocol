@@ -175,7 +175,7 @@ impl UnixTimeStamp {
         Self(0)
     }
 
-    /// Return `None` if `SystemTime` cannot hold the timestamp.
+    /// Return `None` if [`std::time::SystemTime`] cannot hold the timestamp.
     pub fn from_raw(elapsed: u32) -> Option<Self> {
         let this = Self(elapsed);
 
@@ -432,7 +432,7 @@ impl Default for FileAttrsBox {
 
 impl FileAttrsBox {
     /// Return a shared arena that can be used to allocate
-    /// `FileAttrs` efficiently.
+    /// [`FileAttrs`] efficiently.
     pub fn get_shared_arena() -> &'static SharedArena<FileAttrs> {
         static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
 

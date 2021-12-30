@@ -16,7 +16,7 @@ macro_rules! def_ext_constants {
     };
 }
 
-// version
+/// version
 pub const SSH2_FILEXFER_VERSION: u32 = 3;
 
 // client to server

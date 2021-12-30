@@ -102,7 +102,7 @@ impl ServerVersion {
     }
 }
 
-/// Payload of extended reply response when `ResponseInner::Limits`
+/// Payload of extended reply response when [`crate::request::RequestInner::Limits`]
 /// is sent.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
 pub struct Limits {
@@ -304,7 +304,7 @@ impl fmt::Debug for ErrMsg {
     }
 }
 
-/// Entry in ResponseInner::Name
+/// Entry in [`ResponseInner::Name`]
 #[derive(Debug, Clone)]
 pub struct NameEntry {
     pub filename: Box<Path>,
