@@ -170,6 +170,11 @@ impl UnixTimeStamp {
         Ok(Self(seconds))
     }
 
+    /// Return unix epoch, same as [`UnixTimeStamp::default`]
+    pub const fn unix_epoch() -> Self {
+        Self(0)
+    }
+
     /// Return `None` if `SystemTime` cannot hold the timestamp.
     pub fn from_raw(elapsed: u32) -> Option<Self> {
         let this = Self(elapsed);
