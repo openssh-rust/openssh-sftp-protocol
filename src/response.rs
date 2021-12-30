@@ -202,13 +202,6 @@ impl_visitor!(
 
 #[derive(Debug, Copy, Clone)]
 pub enum ErrorCode {
-    /// Indicates end-of-file condition.
-    ///
-    /// For RequestInner::Read it means that no more data is available in the file,
-    /// and for RequestInner::Readdir it indicates that no more files are contained
-    /// in the directory.
-    Eof,
-
     /// is returned when a reference is made to a file which should exist
     /// but doesn't.
     NoSuchFile,
@@ -239,6 +232,13 @@ pub enum ErrorCode {
 pub enum StatusCode {
     Success,
     Failure(ErrorCode),
+
+    /// Indicates end-of-file condition.
+    ///
+    /// For RequestInner::Read it means that no more data is available in the file,
+    /// and for RequestInner::Readdir it indicates that no more files are contained
+    /// in the directory.
+    Eof,
 }
 impl<'de> Deserialize<'de> for StatusCode {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -249,7 +249,7 @@ impl<'de> Deserialize<'de> for StatusCode {
 
         match discriminant {
             SSH_FX_OK => Ok(StatusCode::Success),
-            SSH_FX_EOF => Ok(StatusCode::Failure(Eof)),
+            SSH_FX_EOF => Ok(StatusCode::Eof),
             SSH_FX_NO_SUCH_FILE => Ok(StatusCode::Failure(NoSuchFile)),
             SSH_FX_PERMISSION_DENIED => Ok(StatusCode::Failure(PermDenied)),
             SSH_FX_FAILURE => Ok(StatusCode::Failure(Failure)),
