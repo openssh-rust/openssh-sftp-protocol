@@ -208,7 +208,7 @@ impl Serialize for Request<'_> {
                 linkpath,
                 targetpath,
             } => {
-                (constants::SSH_FXP_SYMLINK, request_id, linkpath, targetpath).serialize(serializer)
+                (constants::SSH_FXP_SYMLINK, request_id, targetpath, linkpath).serialize(serializer)
             }
 
             Realpath(path) => (constants::SSH_FXP_REALPATH, request_id, path).serialize(serializer),
