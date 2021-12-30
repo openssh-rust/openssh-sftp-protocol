@@ -1,4 +1,4 @@
-use super::{constants, file_attrs::FileAttrs, Handle};
+use super::{constants, file_attrs::FileAttrs, open_options::OpenOptions, Handle};
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -320,4 +320,11 @@ pub struct OpenFile<'a> {
     pub(crate) filename: Cow<'a, Path>,
     pub(crate) flags: u32,
     pub(crate) attrs: FileAttrs,
+}
+
+impl<'a> OpenFile<'a> {
+    /// Open file in read only mode
+    pub const fn open(filename: Cow<'a, Path>) -> Self {
+        OpenOptions::new().read(true).open(filename)
+    }
 }
