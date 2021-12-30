@@ -137,6 +137,15 @@ pub enum RequestInner<'a> {
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,
     },
+
+    /// Responds with `ResponseInner::Status`.
+    ///
+    /// Extension, only available if it is `Extensions::posix_rename`
+    /// is returned by `response::HelloVersion`
+    PosixRename {
+        oldpath: Cow<'a, Path>,
+        newpath: Cow<'a, Path>,
+    },
 }
 
 #[derive(Debug)]
@@ -240,6 +249,15 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_HARDLINK.0,
+                oldpath,
+                newpath,
+            )
+                .serialize(serializer),
+
+            PosixRename { oldpath, newpath } => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_POSIX_RENAME.0,
                 oldpath,
                 newpath,
             )
