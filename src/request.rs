@@ -315,7 +315,7 @@ impl Request<'_> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct OpenFileRequest<'a> {
     pub(crate) filename: Cow<'a, Path>,
     pub(crate) flags: u32,
