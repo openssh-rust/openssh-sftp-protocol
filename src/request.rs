@@ -22,7 +22,7 @@ pub enum RequestInner<'a> {
     /// [`crate::response::ResponseInner::Handle`] (if the operation is successful) or
     /// [`crate::response::ResponseInner::Status`]
     /// (if the operation fails).
-    Open(OpenFile<'a>),
+    Open(OpenFileRequest<'a>),
 
     /// Response will be [`crate::response::ResponseInner::Status`].
     Close(Cow<'a, Handle>),
@@ -316,13 +316,13 @@ impl Request<'_> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct OpenFile<'a> {
+pub struct OpenFileRequest<'a> {
     pub(crate) filename: Cow<'a, Path>,
     pub(crate) flags: u32,
     pub(crate) attrs: FileAttrs,
 }
 
-impl<'a> OpenFile<'a> {
+impl<'a> OpenFileRequest<'a> {
     /// Open file in read only mode
     pub const fn open(filename: Cow<'a, Path>) -> Self {
         OpenOptions::new().read(true).open(filename)

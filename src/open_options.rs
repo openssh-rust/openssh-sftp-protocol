@@ -1,6 +1,6 @@
 use super::constants;
 use super::file_attrs::FileAttrs;
-use super::request::OpenFile;
+use super::request::OpenFileRequest;
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -36,7 +36,7 @@ impl OpenOptions {
         self
     }
 
-    pub const fn open(self, filename: Cow<'_, Path>) -> OpenFile<'_> {
+    pub const fn open(self, filename: Cow<'_, Path>) -> OpenFileRequest<'_> {
         let mut flags: u32 = 0;
 
         if self.read {
@@ -51,7 +51,7 @@ impl OpenOptions {
             flags |= constants::SSH_FXF_APPEND;
         }
 
-        OpenFile {
+        OpenFileRequest {
             filename,
             flags,
             attrs: FileAttrs::new(),
@@ -63,7 +63,7 @@ impl OpenOptions {
         filename: Cow<'_, Path>,
         flags: CreateFlags,
         attrs: FileAttrs,
-    ) -> OpenFile<'_> {
+    ) -> OpenFileRequest<'_> {
         let mut openfile = self.open(filename);
         openfile.flags |= constants::SSH_FXF_CREAT | flags as u32;
         openfile.attrs = attrs;
