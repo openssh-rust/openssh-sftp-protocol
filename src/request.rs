@@ -297,7 +297,7 @@ impl Request<'_> {
     pub fn serialize_write_request<'a>(
         serializer: &'a mut ssh_format::Serializer,
         request_id: u32,
-        handle: &[u8],
+        handle: Cow<'_, Handle>,
         offset: u64,
         data_len: u32,
     ) -> ssh_format::Result<&'a [u8]> {
