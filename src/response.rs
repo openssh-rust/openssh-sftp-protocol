@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use super::file_attrs::{FileAttrs, FileAttrsBox};
 use super::{constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned};
 
@@ -165,7 +167,7 @@ impl_visitor!(
                 err_msg: iter.get_next()?,
             },
 
-            SSH_FXP_HANDLE => Handle(iter.get_next()?),
+            SSH_FXP_HANDLE => Handle(HandleOwned(iter.get_next()?)),
 
             SSH_FXP_NAME => {
                 let len: u32 = iter.get_next()?;

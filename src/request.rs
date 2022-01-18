@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use super::{constants, file_attrs::FileAttrs, open_options::OpenOptions, Handle};
 
 use std::borrow::Cow;

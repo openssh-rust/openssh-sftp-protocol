@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use super::constants;
 use super::file_attrs::FileAttrs;
 use super::request::OpenFileRequest;

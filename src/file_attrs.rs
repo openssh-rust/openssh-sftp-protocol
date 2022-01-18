@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use super::constants;
 use super::{seq_iter::SeqIter, visitor::impl_visitor};
 

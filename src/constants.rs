@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 macro_rules! def_packet_type {
     ( $name:ident, $val:literal ) => {
         pub const $name: u8 = $val;

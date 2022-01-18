@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 pub(crate) use core::fmt;
 
 pub(crate) use serde::de::{Deserializer, SeqAccess, Visitor};
