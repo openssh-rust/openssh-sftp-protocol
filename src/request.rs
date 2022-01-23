@@ -160,6 +160,25 @@ pub enum RequestInner<'a> {
         oldpath: Cow<'a, Path>,
         newpath: Cow<'a, Path>,
     },
+
+    /// The write will extend the file if writing beyond the end of the file.
+    ///
+    /// It is legal to write way beyond the end of the file, the semantics
+    /// are to write zeroes from the end of the file to the specified offset
+    /// and then the data.
+    ///
+    /// On most operating systems, such writes do not allocate disk space but
+    /// instead leave "holes" in the file.
+    ///
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
+    ///
+    /// The Write also includes any amount of custom data and its size is
+    /// included in the size of the entire packet sent.
+    Write {
+        handle: Cow<'a, Handle>,
+        offset: u64,
+        data: Cow<'a, [u8]>,
+    },
 }
 
 #[derive(Debug)]
@@ -276,6 +295,12 @@ impl Serialize for Request<'_> {
                 newpath,
             )
                 .serialize(serializer),
+
+            Write {
+                handle,
+                offset,
+                data,
+            } => (constants::SSH_FXP_WRITE, request_id, handle, offset, data).serialize(serializer),
         }
     }
 }
@@ -289,7 +314,7 @@ impl Request<'_> {
     /// On most operating systems, such writes do not allocate disk space but
     /// instead leave "holes" in the file.
     ///
-    /// The server responds to a write request with a SSH_FXP_STATUS message.
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
     ///
     /// The Write also includes any amount of custom data and its size is
     /// included in the size of the entire packet sent.
