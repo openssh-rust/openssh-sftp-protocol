@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::path::Path;
 
 use serde::{Serialize, Serializer};
+use ssh_format::SerBacker;
 
 /// Response with `Response::Version`.
 pub struct Hello {
@@ -294,13 +295,13 @@ impl Request<'_> {
     /// included in the size of the entire packet sent.
     ///
     /// Return the serialized header (including the 4-byte size).
-    pub fn serialize_write_request<'a>(
-        serializer: &'a mut ssh_format::Serializer,
+    pub fn serialize_write_request<'a, Container: SerBacker>(
+        serializer: &'a mut ssh_format::Serializer<Container>,
         request_id: u32,
         handle: Cow<'_, Handle>,
         offset: u64,
         data_len: u32,
-    ) -> ssh_format::Result<&'a [u8]> {
+    ) -> ssh_format::Result<&'a mut Container> {
         serializer.reset();
         (
             constants::SSH_FXP_WRITE,
@@ -311,9 +312,7 @@ impl Request<'_> {
         )
             .serialize(&mut *serializer)?;
 
-        serializer
-            .get_output_with_data(data_len)
-            .map(|v| v.as_slice())
+        serializer.get_output_with_data(data_len)
     }
 }
 
