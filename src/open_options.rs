@@ -28,14 +28,26 @@ impl OpenOptions {
         self
     }
 
+    pub const fn get_read(self) -> bool {
+        self.read
+    }
+
     pub const fn write(mut self, write: bool) -> Self {
         self.write = write;
         self
     }
 
+    pub const fn get_write(self) -> bool {
+        self.write || self.append
+    }
+
     pub const fn append(mut self, append: bool) -> Self {
         self.append = append;
         self
+    }
+
+    pub const fn get_append(self) -> bool {
+        self.append
     }
 
     pub const fn open(self, filename: Cow<'_, Path>) -> OpenFileRequest<'_> {
