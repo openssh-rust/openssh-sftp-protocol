@@ -21,7 +21,7 @@ use once_cell::sync::OnceCell;
 use shared_arena::{ArenaBox, SharedArena};
 
 /// bit mask for the file type bit field
-const S_IFMT: u32 = 0170000;
+const S_IFMT: u32 = 0o170000;
 
 bitflags! {
     #[derive(Default)]
@@ -96,7 +96,7 @@ bitflags! {
     #[derive(Default)]
     pub struct Permissions: u32 {
         /// set-user-ID (set process effective user ID on execve(2))
-        const SET_UID = 0x04000;
+        const SET_UID = 0o4000;
 
         /// set-group-ID
         ///
@@ -104,50 +104,50 @@ bitflags! {
         ///  - mandatory locking, as described in fcntl(2)
         ///  - take a new file's group from parent directory, as described in
         ///    chown(2) and mkdir(2)
-        const SET_GID = 0x02000;
+        const SET_GID = 0o2000;
 
         /// sticky bit (restricted deletion flag, as described in unlink(2))
-        const SET_VTX = 0x01000;
+        const SET_VTX = 0o1000;
 
         /// read by owner
-        const READ_BY_OWNER = 0x00400;
+        const READ_BY_OWNER = 0o400;
 
         /// write by owner
-        const WRITE_BY_OWNER = 0x00200;
+        const WRITE_BY_OWNER = 0o200;
 
         /// execute file or search directory by owner
-        const EXECUTE_BY_OWNER = 0x00100;
+        const EXECUTE_BY_OWNER = 0o100;
 
         /// read by group
-        const READ_BY_GROUP = 0x00040;
+        const READ_BY_GROUP = 0o40;
 
         /// write by group
-        const WRITE_BY_GROUP = 0x00020;
+        const WRITE_BY_GROUP = 0o20;
 
         /// execute/search by group
-        const EXECUTE_BY_GROUP = 0x00010;
+        const EXECUTE_BY_GROUP = 0o10;
 
         /// read by others
-        const READ_BY_OTHER = 0x00004;
+        const READ_BY_OTHER = 0o4;
 
         /// write by others
-        const WRITE_BY_OTHER = 0x00002;
+        const WRITE_BY_OTHER = 0o2;
 
         /// execute/search by others
-        const EXECUTE_BY_OTHER = 0x00001;
+        const EXECUTE_BY_OTHER = 0o1;
     }
 }
 
 #[derive(Debug, Clone, Copy, FromPrimitive, Eq, PartialEq)]
 #[repr(u32)]
 pub enum FileType {
-    Socket = 0x0140000,
-    Symlink = 0x0120000,
-    RegularFile = 0x0100000,
-    BlockDevice = 0x0060000,
-    Directory = 0x0040000,
-    CharacterDevice = 0x0020000,
-    FIFO = 0x0010000,
+    Socket = 0o140000,
+    Symlink = 0o120000,
+    RegularFile = 0o100000,
+    BlockDevice = 0o60000,
+    Directory = 0o40000,
+    CharacterDevice = 0o20000,
+    FIFO = 0o10000,
 }
 
 /// Default value is 1970-01-01 00:00:00 UTC.
