@@ -11,8 +11,6 @@ keywords = ["ssh", "multiplex", "async", "network", "sftp"]
 categories = ["asynchronous", "network-programming", "api-bindings"]
 
 [dependencies]
-libc = "0.2.112"
-
 thiserror = "1.0.30"
 
 num-traits = "0.2"

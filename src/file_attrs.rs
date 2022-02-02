@@ -20,6 +20,9 @@ use serde::Serialize;
 use once_cell::sync::OnceCell;
 use shared_arena::{ArenaBox, SharedArena};
 
+/// bit mask for the file type bit field
+const S_IFMT: u32 = 0170000;
+
 bitflags! {
     #[derive(Default)]
     struct FileAttrsFlags: u8 {
@@ -93,7 +96,7 @@ bitflags! {
     #[derive(Default)]
     pub struct Permissions: u32 {
         /// set-user-ID (set process effective user ID on execve(2))
-        const SET_UID = libc::S_ISUID;
+        const SET_UID = 0x04000;
 
         /// set-group-ID
         ///
@@ -101,50 +104,50 @@ bitflags! {
         ///  - mandatory locking, as described in fcntl(2)
         ///  - take a new file's group from parent directory, as described in
         ///    chown(2) and mkdir(2)
-        const SET_GID = libc::S_ISGID;
+        const SET_GID = 0x02000;
 
         /// sticky bit (restricted deletion flag, as described in unlink(2))
-        const SET_VTX = libc::S_ISVTX;
+        const SET_VTX = 0x01000;
 
         /// read by owner
-        const READ_BY_OWNER = libc::S_IRUSR;
+        const READ_BY_OWNER = 0x00400;
 
         /// write by owner
-        const WRITE_BY_OWNER = libc::S_IWUSR;
+        const WRITE_BY_OWNER = 0x00200;
 
         /// execute file or search directory by owner
-        const EXECUTE_BY_OWNER = libc::S_IXUSR;
+        const EXECUTE_BY_OWNER = 0x00100;
 
         /// read by group
-        const READ_BY_GROUP = libc::S_IRGRP;
+        const READ_BY_GROUP = 0x00040;
 
         /// write by group
-        const WRITE_BY_GROUP = libc::S_IWGRP;
+        const WRITE_BY_GROUP = 0x00020;
 
         /// execute/search by group
-        const EXECUTE_BY_GROUP = libc::S_IXGRP;
+        const EXECUTE_BY_GROUP = 0x00010;
 
         /// read by others
-        const READ_BY_OTHER = libc::S_IROTH;
+        const READ_BY_OTHER = 0x00004;
 
         /// write by others
-        const WRITE_BY_OTHER = libc::S_IWOTH;
+        const WRITE_BY_OTHER = 0x00002;
 
         /// execute/search by others
-        const EXECUTE_BY_OTHER = libc::S_IXOTH;
+        const EXECUTE_BY_OTHER = 0x00001;
     }
 }
 
 #[derive(Debug, Clone, Copy, FromPrimitive, Eq, PartialEq)]
 #[repr(u32)]
 pub enum FileType {
-    Socket = libc::S_IFSOCK,
-    Symlink = libc::S_IFLNK,
-    RegularFile = libc::S_IFREG,
-    BlockDevice = libc::S_IFBLK,
-    Directory = libc::S_IFDIR,
-    CharacterDevice = libc::S_IFCHR,
-    FIFO = libc::S_IFIFO,
+    Socket = 0x0140000,
+    Symlink = 0x0120000,
+    RegularFile = 0x0100000,
+    BlockDevice = 0x0060000,
+    Directory = 0x0040000,
+    CharacterDevice = 0x0020000,
+    FIFO = 0x0010000,
 }
 
 /// Default value is 1970-01-01 00:00:00 UTC.
@@ -280,7 +283,7 @@ impl FileAttrs {
 
     pub fn set_permissions(&mut self, permissions: Permissions) {
         self.flags |= FileAttrsFlags::PERMISSIONS;
-        let filetype = self.st_mode & libc::S_IFMT;
+        let filetype = self.st_mode & S_IFMT;
         self.st_mode = filetype | permissions.bits();
     }
 
@@ -320,7 +323,7 @@ impl FileAttrs {
     /// filetype is only set by the sftp-server.
     pub fn get_filetype(&self) -> Option<FileType> {
         self.getter_impl(FileAttrsFlags::PERMISSIONS, || {
-            let filetype = self.st_mode & libc::S_IFMT;
+            let filetype = self.st_mode & S_IFMT;
 
             if filetype == 0 {
                 None
@@ -383,7 +386,7 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
     if attrs.has_attr(FileAttrsFlags::PERMISSIONS) {
         attrs.st_mode = iter.get_next()?;
 
-        let filetype = attrs.st_mode & libc::S_IFMT;
+        let filetype = attrs.st_mode & S_IFMT;
 
         // If filetype is specified, then make sure it is valid.
         if filetype != 0 && FileType::from_u32(filetype).is_none() {
