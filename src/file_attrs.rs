@@ -3,10 +3,10 @@
 use super::constants;
 use super::{seq_iter::SeqIter, visitor::impl_visitor};
 
-use core::fmt;
-use core::num::TryFromIntError;
-use core::ops::{Deref, DerefMut};
-
+use std::convert::TryInto;
+use std::fmt;
+use std::num::TryFromIntError;
+use std::ops::{Deref, DerefMut};
 use std::time::{Duration, SystemTime, SystemTimeError};
 
 use bitflags::bitflags;
