@@ -138,7 +138,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Copy, FromPrimitive, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, FromPrimitive, Eq, PartialEq, Hash)]
 #[repr(u32)]
 pub enum FileType {
     Socket = 0o140000,
