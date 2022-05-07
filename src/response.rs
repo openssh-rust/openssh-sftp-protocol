@@ -23,6 +23,7 @@ pub struct Extensions {
     pub lsetstat: bool,
     pub limits: bool,
     pub expand_path: bool,
+    pub copy_data: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -91,6 +92,9 @@ impl ServerVersion {
                 }
                 constants::EXT_NAME_EXPAND_PATH => {
                     extensions.expand_path = true;
+                }
+                constants::EXT_NAME_COPY_DATA => {
+                    extensions.copy_data = true;
                 }
 
                 _ => (),
