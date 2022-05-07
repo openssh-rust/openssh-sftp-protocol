@@ -161,6 +161,39 @@ pub enum RequestInner<'a> {
         newpath: Cow<'a, Path>,
     },
 
+    /// Responds with a [`crate::response::ResponseInner::Status`] message.
+    ///
+    /// Extension, only available if it is [`crate::response::Extensions::posix_rename`]
+    /// is returned by [`crate::response::ServerVersion`].
+    ///
+    /// The server MUST copy the data exactly as if the client had issued a
+    /// series of [`RequestInner::Read`] requests on the `read_from_handle`
+    /// starting at `read_from_offset` and totaling `read_data_length` bytes,
+    /// and issued a series of [`RequestInner::Write`] packets on the
+    /// `write_to_handle`, starting at the `write_from_offset`, and totaling
+    /// the total number of bytes read by the [`RequestInner::Read`] packets.
+    ///
+    /// The server SHOULD allow `read_from_handle` and `write_to_handle` to
+    /// be the same handle as long as the range of data is not overlapping.
+    /// This allows data to efficiently be moved within a file.
+    ///
+    /// If `data_length` is `0`, this imples data should be read until EOF is
+    /// encountered.
+    ///
+    /// There are no protocol restictions on this operation; however, the
+    /// server MUST ensure that the user does not exceed quota, etc.  The
+    /// server is, as always, free to complete this operation out of order if
+    /// it is too large to complete immediately, or to refuse a request that
+    /// is too large.
+    Cp {
+        read_from_handle: Cow<'a, Handle>,
+        read_from_offset: u64,
+        read_data_length: u64,
+
+        write_to_handle: Cow<'a, Handle>,
+        write_to_offset: u64,
+    },
+
     /// The write will extend the file if writing beyond the end of the file.
     ///
     /// It is legal to write way beyond the end of the file, the semantics
@@ -293,6 +326,24 @@ impl Serialize for Request<'_> {
                 constants::EXT_NAME_POSIX_RENAME.0,
                 oldpath,
                 newpath,
+            )
+                .serialize(serializer),
+
+            Cp {
+                read_from_handle,
+                read_from_offset,
+                read_data_length,
+                write_to_handle,
+                write_to_offset,
+            } => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_COPY_DATA.0,
+                read_from_handle,
+                read_from_offset,
+                read_data_length,
+                write_to_handle,
+                write_to_offset,
             )
                 .serialize(serializer),
 
