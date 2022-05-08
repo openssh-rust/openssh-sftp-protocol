@@ -166,6 +166,8 @@ pub enum RequestInner<'a> {
     /// Extension, only available if it is [`crate::response::Extensions::posix_rename`]
     /// is returned by [`crate::response::ServerVersion`].
     ///
+    /// For [openssh-portable], this is available from V_9_0_P1.
+    ///
     /// The server MUST copy the data exactly as if the client had issued a
     /// series of [`RequestInner::Read`] requests on the `read_from_handle`
     /// starting at `read_from_offset` and totaling `read_data_length` bytes,
@@ -185,6 +187,8 @@ pub enum RequestInner<'a> {
     /// server is, as always, free to complete this operation out of order if
     /// it is too large to complete immediately, or to refuse a request that
     /// is too large.
+    ///
+    /// [openssh-portable]: https://github.com/openssh/openssh-portable
     Cp {
         read_from_handle: Cow<'a, Handle>,
         read_from_offset: u64,
