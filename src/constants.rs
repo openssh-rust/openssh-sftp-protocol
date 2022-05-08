@@ -98,3 +98,4 @@ def_ext_constants!(EXT_NAME_FSYNC, "fsync@openssh.com", 1);
 def_ext_constants!(EXT_NAME_LSETSTAT, "lsetstat@openssh.com", 1);
 def_ext_constants!(EXT_NAME_LIMITS, "limits@openssh.com", 1);
 def_ext_constants!(EXT_NAME_EXPAND_PATH, "expand-path@openssh.com", 1);
+def_ext_constants!(EXT_NAME_COPY_DATA, "copy-data", 1);
