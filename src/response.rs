@@ -55,7 +55,7 @@ impl ServerVersion {
         let version = u32::deserialize(&mut de)?;
 
         let mut extensions = Extensions::default();
-        while !de.into_inner().is_empty() {
+        while !de.clone().into_inner().0.is_empty() {
             // sftp v3 does not specify the encoding of extension names and revisions.
             //
             // Read both name and revision before continue parsing them
