@@ -30,6 +30,9 @@ pub enum ErrorCode {
     /// Indicates that an attempt was made to perform an operation which
     /// is not supported for the server.
     OpUnsupported,
+
+    /// Unknown error code
+    Unknown,
 }
 
 #[derive(Clone, Deserialize)]
