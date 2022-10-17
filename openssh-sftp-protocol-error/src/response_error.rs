@@ -4,6 +4,7 @@ use serde::Deserialize;
 use vec_strings::TwoStrs;
 
 #[derive(Debug, Copy, Clone)]
+#[non_exhaustive]
 pub enum ErrorCode {
     /// is returned when a reference is made to a file which should exist
     /// but doesn't.
