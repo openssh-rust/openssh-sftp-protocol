@@ -3,6 +3,7 @@ use std::{num::TryFromIntError, time::SystemTimeError};
 use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError)]
+#[non_exhaustive]
 pub enum UnixTimeStampError {
     /// TimeStamp is earlier than 1970-01-01 00:00:00 UTC.
     #[error("TimeStamp is earlier than 1970-01-01 00:00:00 UTC.")]
