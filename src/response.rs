@@ -238,10 +238,7 @@ impl<'de> Deserialize<'de> for StatusCode {
                 for they are pseudo-error that can only be generated locally.",
             )),
 
-            _ => Err(Error::invalid_value(
-                Unexpected::Unsigned(discriminant as u64),
-                &"Invalid status code",
-            )),
+            _ => Ok(StatusCode::Failure(Unknown)),
         }
     }
 }
