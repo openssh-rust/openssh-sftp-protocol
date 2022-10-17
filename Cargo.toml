@@ -10,8 +10,11 @@ repository = "https://github.com/openssh-rust/openssh-sftp-client"
 keywords = ["ssh", "multiplex", "async", "network", "sftp"]
 categories = ["asynchronous", "network-programming", "api-bindings"]
 
+[workspace]
+members = ["openssh-sftp-protocol-error"]
+
 [dependencies]
-thiserror = "1.0.30"
+openssh-sftp-protocol-error = { version = "0.1.0", path = "openssh-sftp-protocol-error" }
 
 num-traits = "0.2"
 num-derive = "0.3"
