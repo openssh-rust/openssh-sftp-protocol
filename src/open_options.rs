@@ -1,11 +1,8 @@
 #![forbid(unsafe_code)]
 
-use super::constants;
-use super::file_attrs::FileAttrs;
-use super::request::OpenFileRequest;
+use super::{constants, file_attrs::FileAttrs, request::OpenFileRequest};
 
-use std::borrow::Cow;
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 #[derive(Debug, Copy, Clone)]
 pub struct OpenOptions {

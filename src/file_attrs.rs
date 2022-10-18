@@ -1,21 +1,27 @@
 #![forbid(unsafe_code)]
 
-use super::constants;
-use super::{seq_iter::SeqIter, visitor::impl_visitor};
+use super::{
+    constants,
+    {seq_iter::SeqIter, visitor::impl_visitor},
+};
 
-use std::convert::TryInto;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
-use std::time::{Duration, SystemTime};
+use std::{
+    convert::TryInto,
+    fmt,
+    ops::{Deref, DerefMut},
+    time::{Duration, SystemTime},
+};
 
 use bitflags::bitflags;
 use num_derive::FromPrimitive;
 use num_traits::cast::FromPrimitive;
 use once_cell::sync::OnceCell;
 use openssh_sftp_protocol_error::UnixTimeStampError;
-use serde::de::{Error, Unexpected};
-use serde::ser::{SerializeTuple, Serializer};
-use serde::Serialize;
+use serde::{
+    de::{Error, Unexpected},
+    ser::{SerializeTuple, Serializer},
+    Serialize,
+};
 use shared_arena::{ArenaBox, SharedArena};
 
 /// bit mask for the file type bit field
