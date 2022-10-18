@@ -5,7 +5,7 @@ use super::{
     {constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned},
 };
 
-use std::{iter::FusedIterator, path::Path, str::from_utf8};
+use std::{borrow::Cow, iter::FusedIterator, path::Path, str::from_utf8};
 
 use bitflags::bitflags;
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
@@ -69,11 +69,11 @@ impl ServerVersion {
             // Read both name and revision before continue parsing them
             // so that if the current iteration is skipped by 'continue',
             // the next iteration can continue read in extensions without error.
-            let name = <&[u8]>::deserialize(&mut *de)?;
-            let revision = <&[u8]>::deserialize(&mut *de)?;
+            let name = Cow::<'_, [u8]>::deserialize(&mut *de)?;
+            let revision = Cow::<'_, [u8]>::deserialize(&mut *de)?;
 
-            let name = ok_or_continue!(from_utf8(name));
-            let revision = ok_or_continue!(from_utf8(revision));
+            let name = ok_or_continue!(from_utf8(&name));
+            let revision = ok_or_continue!(from_utf8(&revision));
             let revision: u64 = ok_or_continue!(revision.parse());
 
             match (name, revision) {
