@@ -5,7 +5,7 @@ use super::{
     {constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned},
 };
 
-use std::{path::Path, str::from_utf8};
+use std::{iter::FusedIterator, path::Path, str::from_utf8};
 
 use bitflags::bitflags;
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
@@ -38,7 +38,12 @@ pub struct ServerVersion {
 impl ServerVersion {
     /// * `bytes` - should not include the initial 4-byte which server
     ///   as the length of the whole packet.
-    pub fn deserialize(bytes: &[u8]) -> ssh_format::Result<Self> {
+    pub fn deserialize<'de, It>(
+        de: &mut ssh_format::Deserializer<'de, It>,
+    ) -> ssh_format::Result<Self>
+    where
+        It: FusedIterator + Iterator<Item = &'de [u8]>,
+    {
         macro_rules! ok_or_continue {
             ($res:expr) => {
                 if let Ok(val) = $res {
@@ -49,25 +54,23 @@ impl ServerVersion {
             };
         }
 
-        let mut de = ssh_format::Deserializer::from_bytes(bytes);
-
-        let packet_type = u8::deserialize(&mut de)?;
+        let packet_type = u8::deserialize(&mut *de)?;
         if packet_type != constants::SSH_FXP_VERSION {
             return Err(ssh_format::Error::custom("Unexpected response"));
-        };
+        }
 
-        let version = u32::deserialize(&mut de)?;
+        let version = u32::deserialize(&mut *de)?;
 
         let mut extensions = Extensions::default();
 
-        while !de.clone().into_inner().0.is_empty() {
+        while de.has_remaining_data() {
             // sftp v3 does not specify the encoding of extension names and revisions.
             //
             // Read both name and revision before continue parsing them
             // so that if the current iteration is skipped by 'continue',
             // the next iteration can continue read in extensions without error.
-            let name = <&[u8]>::deserialize(&mut de)?;
-            let revision = <&[u8]>::deserialize(&mut de)?;
+            let name = <&[u8]>::deserialize(&mut *de)?;
+            let revision = <&[u8]>::deserialize(&mut *de)?;
 
             let name = ok_or_continue!(from_utf8(name));
             let revision = ok_or_continue!(from_utf8(revision));
