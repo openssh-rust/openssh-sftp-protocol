@@ -7,24 +7,27 @@ use super::{
 
 use std::{path::Path, str::from_utf8};
 
+use bitflags::bitflags;
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
 use serde::{
     de::{Deserializer, Error, Unexpected},
     Deserialize,
 };
 
-/// The extension that the sftp-server supports.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Extensions {
-    pub posix_rename: bool,
-    pub statvfs: bool,
-    pub fstatvfs: bool,
-    pub hardlink: bool,
-    pub fsync: bool,
-    pub lsetstat: bool,
-    pub limits: bool,
-    pub expand_path: bool,
-    pub copy_data: bool,
+bitflags! {
+    /// The extension that the sftp-server supports.
+    #[derive(Default)]
+    pub struct Extensions: u16 {
+        const POSIX_RENAME = 1 << 0;
+        const STATVFS = 1 << 1;
+        const FSTATVFS= 1<< 2;
+        const HARDLINK= 1<< 3;
+        const FSYNC= 1<< 4;
+        const LSETSTAT= 1<< 5;
+        const LIMITS= 1<< 6;
+        const EXPAND_PATH= 1<< 7;
+        const COPY_DATA= 1<< 8;
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,6 +59,7 @@ impl ServerVersion {
         let version = u32::deserialize(&mut de)?;
 
         let mut extensions = Extensions::default();
+
         while !de.clone().into_inner().0.is_empty() {
             // sftp v3 does not specify the encoding of extension names and revisions.
             //
@@ -71,31 +75,31 @@ impl ServerVersion {
 
             match (name, revision) {
                 constants::EXT_NAME_POSIX_RENAME => {
-                    extensions.posix_rename = true;
+                    extensions |= Extensions::POSIX_RENAME;
                 }
                 constants::EXT_NAME_STATVFS => {
-                    extensions.statvfs = true;
+                    extensions |= Extensions::STATVFS;
                 }
                 constants::EXT_NAME_FSTATVFS => {
-                    extensions.fstatvfs = true;
+                    extensions |= Extensions::FSTATVFS;
                 }
                 constants::EXT_NAME_HARDLINK => {
-                    extensions.hardlink = true;
+                    extensions |= Extensions::HARDLINK;
                 }
                 constants::EXT_NAME_FSYNC => {
-                    extensions.fsync = true;
+                    extensions |= Extensions::FSYNC;
                 }
                 constants::EXT_NAME_LSETSTAT => {
-                    extensions.lsetstat = true;
+                    extensions |= Extensions::LSETSTAT;
                 }
                 constants::EXT_NAME_LIMITS => {
-                    extensions.limits = true;
+                    extensions |= Extensions::LIMITS;
                 }
                 constants::EXT_NAME_EXPAND_PATH => {
-                    extensions.expand_path = true;
+                    extensions |= Extensions::EXPAND_PATH;
                 }
                 constants::EXT_NAME_COPY_DATA => {
-                    extensions.copy_data = true;
+                    extensions |= Extensions::COPY_DATA;
                 }
 
                 _ => (),
