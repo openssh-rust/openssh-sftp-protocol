@@ -7,22 +7,18 @@ use super::{
 
 use std::{
     convert::TryInto,
-    fmt,
-    ops::{Deref, DerefMut},
     time::{Duration, SystemTime},
 };
 
 use bitflags::bitflags;
 use num_derive::FromPrimitive;
 use num_traits::cast::FromPrimitive;
-use once_cell::sync::OnceCell;
 use openssh_sftp_protocol_error::UnixTimeStampError;
 use serde::{
     de::{Error, Unexpected},
     ser::{SerializeTuple, Serializer},
     Serialize,
 };
-use shared_arena::{ArenaBox, SharedArena};
 
 /// bit mask for the file type bit field
 const S_IFMT: u32 = 0o170000;
@@ -418,70 +414,6 @@ impl_visitor!(FileAttrs, FileAttrVisitor, "File attributes", seq, {
 
     Ok(attrs)
 });
-
-#[derive(Debug)]
-pub struct FileAttrsBox(ArenaBox<FileAttrs>);
-
-impl Default for FileAttrsBox {
-    fn default() -> Self {
-        Self::new(FileAttrs::new())
-    }
-}
-
-impl FileAttrsBox {
-    /// Return a shared arena that can be used to allocate
-    /// [`FileAttrs`] efficiently.
-    fn get_shared_arena() -> &'static SharedArena<FileAttrs> {
-        static ARENA: OnceCell<SharedArena<FileAttrs>> = OnceCell::new();
-
-        ARENA.get_or_init(SharedArena::new)
-    }
-
-    /// Allocate an `ArenaBox` on shared_arena.
-    pub fn new(file_attrs: FileAttrs) -> Self {
-        Self(Self::get_shared_arena().alloc(file_attrs))
-    }
-}
-
-impl Clone for FileAttrsBox {
-    fn clone(&self) -> Self {
-        Self::new(*self.0)
-    }
-}
-
-impl Deref for FileAttrsBox {
-    type Target = FileAttrs;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-
-impl DerefMut for FileAttrsBox {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.0
-    }
-}
-
-impl fmt::Pointer for FileAttrsBox {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.0, f)
-    }
-}
-
-impl Serialize for FileAttrsBox {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        (*self.0).serialize(serializer)
-    }
-}
-
-impl<'de> crate::visitor::Deserialize<'de> for FileAttrsBox {
-    fn deserialize<D: crate::visitor::Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Self, D::Error> {
-        Ok(Self::new(FileAttrs::deserialize(deserializer)?))
-    }
-}
 
 #[cfg(test)]
 mod tests {
