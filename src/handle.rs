@@ -1,7 +1,6 @@
 use std::{
     borrow::{Borrow, ToOwned},
     convert::AsRef,
-    mem::transmute,
     ops::Deref,
 };
 
@@ -14,7 +13,7 @@ impl Deref for HandleOwned {
     type Target = Handle;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { transmute(self.0.deref()) }
+        unsafe { &*(self.0.deref() as *const [u8] as *const Handle) }
     }
 }
 
