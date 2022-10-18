@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use super::{
-    file_attrs::{FileAttrs, FileAttrsBox},
+    file_attrs::FileAttrs,
     {constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned},
 };
 
@@ -131,7 +131,7 @@ pub enum ResponseInner {
 
     Name(Box<[NameEntry]>),
 
-    Attrs(FileAttrsBox),
+    Attrs(FileAttrs),
 }
 
 #[derive(Debug)]
