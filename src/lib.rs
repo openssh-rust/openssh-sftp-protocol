@@ -2,6 +2,8 @@ pub extern crate serde;
 pub extern crate ssh_format;
 pub extern crate vec_strings;
 
+pub use openssh_sftp_protocol_error::*;
+
 mod handle;
 mod seq_iter;
 mod visitor;

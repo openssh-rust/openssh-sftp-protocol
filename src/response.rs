@@ -3,14 +3,12 @@
 use super::file_attrs::{FileAttrs, FileAttrsBox};
 use super::{constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned};
 
-use core::fmt;
 use std::path::Path;
 use std::str::from_utf8;
 
+use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
 use serde::de::{Deserializer, Error, Unexpected};
 use serde::Deserialize;
-
-use vec_strings::TwoStrs;
 
 /// The extension that the sftp-server supports.
 #[derive(Debug, Default, Clone, Copy)]
@@ -207,34 +205,6 @@ impl_visitor!(
 );
 
 #[derive(Debug, Copy, Clone)]
-pub enum ErrorCode {
-    /// is returned when a reference is made to a file which should exist
-    /// but doesn't.
-    NoSuchFile,
-
-    /// Returned when the authenticated user does not have sufficient
-    /// permissions to perform the operation.
-    PermDenied,
-
-    /// A generic catch-all error message.
-    ///
-    /// It should be returned if an error occurs for which there is no more
-    /// specific error code defined.
-    Failure,
-
-    /// May be returned if a badly formatted packet or protocol
-    /// incompatibility is detected.
-    ///
-    /// If the handle is opened read only, but write flag is required,
-    /// then `BadMessage` might be returned, vice versa.
-    BadMessage,
-
-    /// Indicates that an attempt was made to perform an operation which
-    /// is not supported for the server.
-    OpUnsupported,
-}
-
-#[derive(Debug, Copy, Clone)]
 pub enum StatusCode {
     Success,
     Failure(ErrorCode),
@@ -268,45 +238,8 @@ impl<'de> Deserialize<'de> for StatusCode {
                 for they are pseudo-error that can only be generated locally.",
             )),
 
-            _ => Err(Error::invalid_value(
-                Unexpected::Unsigned(discriminant as u64),
-                &"Invalid status code",
-            )),
+            _ => Ok(StatusCode::Failure(Unknown)),
         }
-    }
-}
-
-#[derive(Clone, Deserialize)]
-pub struct ErrMsg(TwoStrs);
-
-impl ErrMsg {
-    /// Returns (err_message, language_tag).
-    ///
-    /// Language tag is defined according to specification [RFC-1766].
-    ///
-    /// It can be parsed by
-    /// [pyfisch/rust-language-tags](https://github.com/pyfisch/rust-language-tags)
-    /// according to
-    /// [this issue](https://github.com/pyfisch/rust-language-tags/issues/39).
-    pub fn get(&self) -> (&str, &str) {
-        self.0.get()
-    }
-}
-
-impl fmt::Display for ErrMsg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (err_msg, language_tag) = self.get();
-        write!(
-            f,
-            "Err Message: {}, Language Tag: {}",
-            err_msg, language_tag
-        )
-    }
-}
-
-impl fmt::Debug for ErrMsg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
     }
 }
 

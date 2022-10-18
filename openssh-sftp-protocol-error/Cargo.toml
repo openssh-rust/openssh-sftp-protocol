@@ -1,0 +1,16 @@
+[package]
+name = "openssh-sftp-protocol-error"
+version = "0.1.0"
+edition = "2018"
+
+license = "MIT"
+description = "Data format used to communicate with openssh mux server."
+repository = "https://github.com/openssh-rust/openssh-sftp-client"
+
+keywords = ["ssh", "multiplex", "async", "network", "sftp"]
+categories = ["asynchronous", "network-programming", "api-bindings"]
+
+[dependencies]
+thiserror = "1.0.30"
+serde = { version = "1.0", features = ["derive"] }
+vec-strings = { version = "0.4.5", features = ["serde"] }

@@ -5,19 +5,17 @@ use super::{seq_iter::SeqIter, visitor::impl_visitor};
 
 use std::convert::TryInto;
 use std::fmt;
-use std::num::TryFromIntError;
 use std::ops::{Deref, DerefMut};
-use std::time::{Duration, SystemTime, SystemTimeError};
+use std::time::{Duration, SystemTime};
 
 use bitflags::bitflags;
 use num_derive::FromPrimitive;
 use num_traits::cast::FromPrimitive;
-
+use once_cell::sync::OnceCell;
+use openssh_sftp_protocol_error::UnixTimeStampError;
 use serde::de::{Error, Unexpected};
 use serde::ser::{SerializeTuple, Serializer};
 use serde::Serialize;
-
-use once_cell::sync::OnceCell;
 use shared_arena::{ArenaBox, SharedArena};
 
 /// bit mask for the file type bit field
@@ -156,17 +154,6 @@ pub enum FileType {
 /// as `u32`.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct UnixTimeStamp(u32);
-
-#[derive(Debug, thiserror::Error)]
-pub enum UnixTimeStampError {
-    /// TimeStamp is earlier than 1970-01-01 00:00:00 UTC.
-    #[error("TimeStamp is earlier than 1970-01-01 00:00:00 UTC.")]
-    TooEarly(#[from] SystemTimeError),
-
-    /// TimeStamp is too large to be represented using u32 in seconds.
-    #[error("TimeStamp is too large to be represented using u32 in seconds.")]
-    TooLarge(#[from] TryFromIntError),
-}
 
 impl UnixTimeStamp {
     pub fn new(system_time: SystemTime) -> Result<Self, UnixTimeStampError> {
