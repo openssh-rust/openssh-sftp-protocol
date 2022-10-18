@@ -44,16 +44,6 @@ impl ServerVersion {
     where
         It: FusedIterator + Iterator<Item = &'de [u8]>,
     {
-        macro_rules! ok_or_continue {
-            ($res:expr) => {
-                if let Ok(val) = $res {
-                    val
-                } else {
-                    continue;
-                }
-            };
-        }
-
         let packet_type = u8::deserialize(&mut *de)?;
         if packet_type != constants::SSH_FXP_VERSION {
             return Err(ssh_format::Error::custom("Unexpected response"));
@@ -72,11 +62,21 @@ impl ServerVersion {
             let name = Cow::<'_, [u8]>::deserialize(&mut *de)?;
             let revision = Cow::<'_, [u8]>::deserialize(&mut *de)?;
 
-            let name = ok_or_continue!(from_utf8(&name));
-            let revision = ok_or_continue!(from_utf8(&revision));
-            let revision: u64 = ok_or_continue!(revision.parse());
+            let optional_extension_pair = (|| {
+                let name = from_utf8(&name).ok()?;
+                let revision = from_utf8(&revision).ok()?;
+                let revision: u64 = revision.parse().ok()?;
 
-            match (name, revision) {
+                Some((name, revision))
+            })();
+
+            let extension_pair = if let Some(extension_pair) = optional_extension_pair {
+                extension_pair
+            } else {
+                continue;
+            };
+
+            match extension_pair {
                 constants::EXT_NAME_POSIX_RENAME => {
                     extensions |= Extensions::POSIX_RENAME;
                 }
