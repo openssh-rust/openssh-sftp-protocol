@@ -1,9 +1,11 @@
 #![forbid(unsafe_code)]
 
-use core::marker::PhantomData;
+use std::marker::PhantomData;
 
-use serde::de::{Error, SeqAccess};
-use serde::Deserialize;
+use serde::{
+    de::{Error, SeqAccess},
+    Deserialize,
+};
 
 pub(crate) struct SeqIter<'de, V: SeqAccess<'de>>(usize, V, PhantomData<&'de ()>);
 

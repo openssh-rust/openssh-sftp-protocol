@@ -1,9 +1,11 @@
 #![forbid(unsafe_code)]
 
-pub(crate) use core::fmt;
+pub(crate) use std::fmt;
 
-pub(crate) use serde::de::{Deserializer, SeqAccess, Visitor};
-pub(crate) use serde::Deserialize;
+pub(crate) use serde::{
+    de::{Deserializer, SeqAccess, Visitor},
+    Deserialize,
+};
 
 macro_rules! impl_visitor {
     ($type:ident, $visitor_name: ident, $expecting_msg:expr, $seq_name: ident, $impl:block) => {

@@ -1,7 +1,9 @@
-use std::borrow::{Borrow, ToOwned};
-use std::convert::AsRef;
-use std::mem::transmute;
-use std::ops::Deref;
+use std::{
+    borrow::{Borrow, ToOwned},
+    convert::AsRef,
+    mem::transmute,
+    ops::Deref,
+};
 
 use vec_strings::SmallArrayBox;
 

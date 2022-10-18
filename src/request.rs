@@ -2,8 +2,7 @@
 
 use super::{constants, file_attrs::FileAttrs, open_options::OpenOptions, Handle};
 
-use std::borrow::Cow;
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 use serde::{Serialize, Serializer};
 use ssh_format::SerOutput;

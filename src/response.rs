@@ -1,14 +1,17 @@
 #![forbid(unsafe_code)]
 
-use super::file_attrs::{FileAttrs, FileAttrsBox};
-use super::{constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned};
+use super::{
+    file_attrs::{FileAttrs, FileAttrsBox},
+    {constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned},
+};
 
-use std::path::Path;
-use std::str::from_utf8;
+use std::{path::Path, str::from_utf8};
 
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
-use serde::de::{Deserializer, Error, Unexpected};
-use serde::Deserialize;
+use serde::{
+    de::{Deserializer, Error, Unexpected},
+    Deserialize,
+};
 
 /// The extension that the sftp-server supports.
 #[derive(Debug, Default, Clone, Copy)]
