@@ -155,6 +155,7 @@ pub enum FileType {
 /// UnixTimeStamp stores number of seconds elapsed since 1970-01-01 00:00:00 UTC
 /// as `u32`.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 pub struct UnixTimeStamp(u32);
 
 impl UnixTimeStamp {
