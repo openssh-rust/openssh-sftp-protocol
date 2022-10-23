@@ -7,6 +7,7 @@ use std::{
 use vec_strings::SmallArrayBox;
 
 #[derive(Debug, Clone)]
+#[repr(transparent)]
 pub struct HandleOwned(pub(crate) SmallArrayBox<u8, 4>);
 
 impl Deref for HandleOwned {
