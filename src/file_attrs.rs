@@ -24,7 +24,7 @@ use serde::{
 const S_IFMT: u32 = 0o170000;
 
 bitflags! {
-    #[derive(Default)]
+    #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     struct FileAttrsFlags: u8 {
         const SIZE = 1 << 0;
         const ID = 1 << 1;
@@ -93,7 +93,7 @@ impl<'de> crate::visitor::Deserialize<'de> for FileAttrsFlags {
 }
 
 bitflags! {
-    #[derive(Default)]
+    #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct Permissions: u32 {
         /// set-user-ID (set process effective user ID on execve(2))
         const SET_UID = 0o4000;

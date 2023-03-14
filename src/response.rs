@@ -16,7 +16,7 @@ use serde::{
 
 bitflags! {
     /// The extension that the sftp-server supports.
-    #[derive(Default)]
+    #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct Extensions: u16 {
         const POSIX_RENAME = 1 << 0;
         const STATVFS = 1 << 1;
