@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.2](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.24.1...openssh-sftp-protocol-v0.24.2) - 2026-07-21
+
+### Other
+
+- Update num-derive requirement from 0.4 to 0.5 ([#25](https://github.com/openssh-rust/openssh-sftp-protocol/pull/25))
+
 ## [0.24.1](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.24.0...openssh-sftp-protocol-v0.24.1) - 2024-11-06
 
 ### Other
