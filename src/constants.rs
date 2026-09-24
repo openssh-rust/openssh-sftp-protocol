@@ -99,3 +99,7 @@ def_ext_constants!(EXT_NAME_LSETSTAT, "lsetstat@openssh.com", 1);
 def_ext_constants!(EXT_NAME_LIMITS, "limits@openssh.com", 1);
 def_ext_constants!(EXT_NAME_EXPAND_PATH, "expand-path@openssh.com", 1);
 def_ext_constants!(EXT_NAME_COPY_DATA, "copy-data", 1);
+
+// statvfs flags
+pub const SSH_FXE_STATVFS_ST_RDONLY: u64 = 0x1;
+pub const SSH_FXE_STATVFS_ST_NOSUID: u64 = 0x2;

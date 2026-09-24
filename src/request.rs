@@ -118,6 +118,18 @@ pub enum RequestInner<'a> {
     /// is returned by [`crate::response::ServerVersion`].
     Limits,
 
+    /// Responds with extended reply, with payload [`crate::response::Statvfs`].
+    ///
+    /// Extension, only available if it is [`crate::response::Extensions::STATVFS`]
+    /// is returned by [`crate::response::ServerVersion`].
+    Statvfs(Cow<'a, Path>),
+
+    /// Responds with extended reply, with payload [`crate::response::Statvfs`].
+    ///
+    /// Extension, only available if it is [`crate::response::Extensions::FSTATVFS`]
+    /// is returned by [`crate::response::ServerVersion`].
+    Fstatvfs(Cow<'a, Handle>),
+
     /// Same response as [`RequestInner::Realpath`].
     ///
     /// Extension, only available if it is [`crate::response::Extensions::expand_path`]
@@ -286,6 +298,22 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_LIMITS.0,
+            )
+                .serialize(serializer),
+
+            Statvfs(path) => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_STATVFS.0,
+                path,
+            )
+                .serialize(serializer),
+
+            Fstatvfs(handle) => (
+                constants::SSH_FXP_EXTENDED,
+                request_id,
+                constants::EXT_NAME_FSTATVFS.0,
+                handle,
             )
                 .serialize(serializer),
 
