@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.24.2...openssh-sftp-protocol-v0.25.0) - 2026-10-01
+
+### Added
+
+- add `statvfs@openssh.com` and `fstatvfs@openssh.com` requests ([#26](https://github.com/openssh-rust/openssh-sftp-protocol/pull/26))
+
 ## [0.24.2](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.24.1...openssh-sftp-protocol-v0.24.2) - 2026-07-21
 
 ### Other
