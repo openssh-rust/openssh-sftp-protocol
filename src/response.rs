@@ -126,6 +126,35 @@ pub struct Limits {
     pub open_handles: u64,
 }
 
+/// Payload of extended reply response when [`crate::request::RequestInner::Statvfs`]
+/// or [`crate::request::RequestInner::Fstatvfs`] is sent.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
+pub struct Statvfs {
+    /// File system block size
+    pub bsize: u64,
+    /// Fundamental file system block size
+    pub frsize: u64,
+    /// Number of blocks (unit `frsize`)
+    pub blocks: u64,
+    /// Free blocks in file system
+    pub bfree: u64,
+    /// Free blocks for non-root
+    pub bavail: u64,
+    /// Total file inodes
+    pub files: u64,
+    /// Free file inodes
+    pub ffree: u64,
+    /// Free file inodes for non-root
+    pub favail: u64,
+    /// File system id
+    pub fsid: u64,
+    /// Bit mask of [`constants::SSH_FXE_STATVFS_ST_RDONLY`] and
+    /// [`constants::SSH_FXE_STATVFS_ST_NOSUID`]
+    pub flag: u64,
+    /// Maximum filename length
+    pub namemax: u64,
+}
+
 #[derive(Debug)]
 pub enum ResponseInner {
     Status {
@@ -259,4 +288,33 @@ pub struct NameEntry {
     pub filename: Box<Path>,
 
     pub attrs: FileAttrs,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Statvfs;
+
+    #[test]
+    fn test_deserialize_statvfs() {
+        let bytes: Vec<u8> = (1..=11u64).flat_map(u64::to_be_bytes).collect();
+        let (statvfs, rest) = ssh_format::from_bytes::<Statvfs>(&bytes).unwrap();
+
+        assert!(rest.is_empty());
+        assert_eq!(
+            statvfs,
+            Statvfs {
+                bsize: 1,
+                frsize: 2,
+                blocks: 3,
+                bfree: 4,
+                bavail: 5,
+                files: 6,
+                ffree: 7,
+                favail: 8,
+                fsid: 9,
+                flag: 10,
+                namemax: 11,
+            }
+        );
+    }
 }

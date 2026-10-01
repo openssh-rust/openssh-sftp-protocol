@@ -12,6 +12,12 @@ macro_rules! def_u32_constants {
     };
 }
 
+macro_rules! def_u64_constants {
+    ( $name:ident, $val:literal ) => {
+        pub const $name: u64 = $val;
+    };
+}
+
 macro_rules! def_ext_constants {
     ( $valname:ident, $name:literal, $revision:literal ) => {
         pub const $valname: (&'static str, u64) = ($name, $revision);
@@ -99,3 +105,7 @@ def_ext_constants!(EXT_NAME_LSETSTAT, "lsetstat@openssh.com", 1);
 def_ext_constants!(EXT_NAME_LIMITS, "limits@openssh.com", 1);
 def_ext_constants!(EXT_NAME_EXPAND_PATH, "expand-path@openssh.com", 1);
 def_ext_constants!(EXT_NAME_COPY_DATA, "copy-data", 1);
+
+// statvfs flags
+def_u64_constants!(SSH_FXE_STATVFS_ST_RDONLY, 0x1);
+def_u64_constants!(SSH_FXE_STATVFS_ST_NOSUID, 0x2);
