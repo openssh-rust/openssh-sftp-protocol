@@ -217,10 +217,14 @@ impl_visitor!(
 
                 for _ in 0..len {
                     let filename: Box<Path> = iter.get_next()?;
-                    let _longname: &[u8] = iter.get_next()?;
+                    let longname: &[u8] = iter.get_next()?;
                     let attrs: FileAttrs = iter.get_next()?;
 
-                    entries.push(NameEntry { filename, attrs });
+                    entries.push(NameEntry {
+                        filename,
+                        longname: longname.into(),
+                        attrs,
+                    });
                 }
 
                 Name(entries.into_boxed_slice())
@@ -283,10 +287,10 @@ impl<'de> Deserialize<'de> for StatusCode {
 }
 
 /// Entry in [`ResponseInner::Name`]
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct NameEntry {
     pub filename: Box<Path>,
-
+    pub longname: Box<[u8]>,
     pub attrs: FileAttrs,
 }
 
