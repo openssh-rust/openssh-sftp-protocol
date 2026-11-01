@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.25.0...openssh-sftp-protocol-v0.26.0) - 2026-11-01
+
+### Other
+
+- Restore access to SFTP longname bytes ([#29](https://github.com/openssh-rust/openssh-sftp-protocol/pull/29))
+
 ## [0.25.0](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.24.2...openssh-sftp-protocol-v0.25.0) - 2026-10-01
 
 ### Added
