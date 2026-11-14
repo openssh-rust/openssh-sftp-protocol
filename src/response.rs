@@ -6,6 +6,10 @@ use super::{
 };
 
 use std::{borrow::Cow, iter::FusedIterator, path::Path, str::from_utf8};
+#[cfg(unix)]
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
+#[cfg(target_os = "wasi")]
+use std::os::wasi::ffi::{OsStrExt, OsStringExt};
 
 use bitflags::bitflags;
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
@@ -295,17 +299,16 @@ impl<'de> Deserialize<'de> for Filename {
 }
 
 fn deserialize_filename<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Box<Path>, D::Error> {
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, target_os = "wasi")))]
     {
         Box::<Path>::deserialize(deserializer)
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     {
         use std::{
             ffi::{OsStr, OsString},
             fmt,
-            os::unix::ffi::{OsStrExt, OsStringExt},
             path::PathBuf,
         };
 
@@ -354,10 +357,10 @@ mod tests {
     use super::{NameEntry, Statvfs};
     use std::path::Path;
 
-    #[cfg(unix)]
-    use {super::Response, super::ResponseInner, serde::Deserialize, std::os::unix::ffi::OsStrExt};
+    #[cfg(any(unix, target_os = "wasi"))]
+    use super::{Deserialize, OsStrExt, Response, ResponseInner};
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     fn name_entry_bytes(filename: &[u8]) -> Vec<u8> {
         let mut bytes = (filename.len() as u32).to_be_bytes().to_vec();
         bytes.extend_from_slice(filename);
@@ -366,7 +369,7 @@ mod tests {
         bytes
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     #[test]
     fn name_response_preserves_raw_bytes() {
         let names: &[&[u8]] = &[b"raw-\xff\xfe", "é-雪".as_bytes()];
@@ -390,7 +393,7 @@ mod tests {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     #[test]
     fn name_entry_preserves_contiguous_and_chunked_bytes() {
         let bytes = name_entry_bytes(b"raw-\xff\xfe");

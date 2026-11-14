@@ -3,15 +3,17 @@
 use super::{constants, file_attrs::FileAttrs, open_options::OpenOptions, Handle};
 
 use std::{borrow::Cow, path::Path};
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
+#[cfg(target_os = "wasi")]
+use std::os::wasi::ffi::OsStrExt;
 
 use serde::{Serialize, Serializer};
 use ssh_format::SerOutput;
 
 fn serialize_path<S: Serializer>(path: &Path, serializer: S) -> Result<S::Ok, S::Error> {
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     {
-        use std::os::unix::ffi::OsStrExt;
-
         let bytes = path.as_os_str().as_bytes();
         if bytes.contains(&0) {
             return Err(serde::ser::Error::custom("path contains NUL"));
@@ -23,7 +25,7 @@ fn serialize_path<S: Serializer>(path: &Path, serializer: S) -> Result<S::Ok, S:
             None => serializer.serialize_bytes(bytes),
         }
     }
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, target_os = "wasi")))]
     path.serialize(serializer)
 }
 
@@ -501,6 +503,8 @@ impl<'a> OpenFileRequest<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Cow, OpenFileRequest, Path, Request, RequestInner};
+    #[cfg(any(unix, target_os = "wasi"))]
+    use {super::OsStrExt, std::ffi::OsStr};
 
     fn assert_request(inner: RequestInner<'_>, expected: &[u8]) {
         let request = Request {
@@ -511,10 +515,9 @@ mod tests {
         assert_eq!(&bytes[4..], expected, "{request:?}");
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     #[test]
     fn outgoing_paths_preserve_raw_bytes() {
-        use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
         use RequestInner::*;
 
         let first = Path::new(OsStr::from_bytes(b"a\xff"));
@@ -565,11 +568,9 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "wasi"))]
     #[test]
     fn outgoing_paths_reject_nul() {
-        use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
-
         for bytes in [b"a\0b".as_slice(), b"a\xff\0b".as_slice()] {
             let path = Path::new(OsStr::from_bytes(bytes));
             for inner in [
