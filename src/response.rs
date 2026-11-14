@@ -216,7 +216,7 @@ impl_visitor!(
                 let mut entries = Vec::<NameEntry>::with_capacity(len);
 
                 for _ in 0..len {
-                    let filename: Box<Path> = iter.get_next()?;
+                    let Filename(filename) = iter.get_next()?;
                     let longname: &[u8] = iter.get_next()?;
                     let attrs: FileAttrs = iter.get_next()?;
 
@@ -286,9 +286,64 @@ impl<'de> Deserialize<'de> for StatusCode {
     }
 }
 
+struct Filename(Box<Path>);
+
+impl<'de> Deserialize<'de> for Filename {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserialize_filename(deserializer).map(Filename)
+    }
+}
+
+fn deserialize_filename<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Box<Path>, D::Error> {
+    #[cfg(not(unix))]
+    {
+        Box::<Path>::deserialize(deserializer)
+    }
+
+    #[cfg(unix)]
+    {
+        use std::{
+            ffi::{OsStr, OsString},
+            fmt,
+            os::unix::ffi::{OsStrExt, OsStringExt},
+            path::PathBuf,
+        };
+
+        struct FilenameVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FilenameVisitor {
+            type Value = Box<Path>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a filename string")
+            }
+
+            fn visit_bytes<E: Error>(self, bytes: &[u8]) -> Result<Self::Value, E> {
+                Ok(Path::new(OsStr::from_bytes(bytes)).into())
+            }
+
+            fn visit_byte_buf<E: Error>(self, bytes: Vec<u8>) -> Result<Self::Value, E> {
+                Ok(PathBuf::from(OsString::from_vec(bytes)).into_boxed_path())
+            }
+
+            fn visit_str<E: Error>(self, value: &str) -> Result<Self::Value, E> {
+                self.visit_bytes(value.as_bytes())
+            }
+
+            fn visit_string<E: Error>(self, value: String) -> Result<Self::Value, E> {
+                self.visit_byte_buf(value.into_bytes())
+            }
+        }
+
+        // SFTP v3 filenames are SSH strings, not necessarily UTF-8 text.
+        deserializer.deserialize_bytes(FilenameVisitor)
+    }
+}
+
 /// Entry in [`ResponseInner::Name`]
 #[derive(Debug, Deserialize, Clone)]
 pub struct NameEntry {
+    #[serde(deserialize_with = "deserialize_filename")]
     pub filename: Box<Path>,
     pub longname: Box<[u8]>,
     pub attrs: FileAttrs,
@@ -296,7 +351,124 @@ pub struct NameEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::Statvfs;
+    use super::{NameEntry, Response, ResponseInner, Statvfs};
+    #[cfg(unix)]
+    use serde::Deserialize;
+    use std::path::Path;
+
+    #[cfg(unix)]
+    use std::os::unix::ffi::OsStrExt;
+
+    fn name_entry_bytes(filename: &[u8]) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&(filename.len() as u32).to_be_bytes());
+        bytes.extend_from_slice(filename);
+        bytes.extend_from_slice(&3u32.to_be_bytes());
+        bytes.extend_from_slice(b"\xff -");
+        bytes.extend_from_slice(&1u32.to_be_bytes());
+        bytes.extend_from_slice(&123u64.to_be_bytes());
+        bytes
+    }
+
+    fn name_response_bytes(filenames: &[&[u8]]) -> Vec<u8> {
+        let mut bytes = vec![104, 0, 0, 0, 17];
+        bytes.extend_from_slice(&(filenames.len() as u32).to_be_bytes());
+        for filename in filenames {
+            bytes.extend_from_slice(&name_entry_bytes(filename));
+        }
+        bytes
+    }
+
+    fn assert_entry_metadata(entry: &NameEntry) {
+        assert_eq!(&*entry.longname, b"\xff -");
+        assert_eq!(entry.attrs.get_size(), Some(123));
+        assert_eq!(entry.attrs.get_id(), None);
+    }
+
+    #[test]
+    fn name_utf8_paths() {
+        let names = ["plain", "é-雪"];
+        let bytes = name_response_bytes(&[names[0].as_bytes(), names[1].as_bytes()]);
+        let (response, rest) = ssh_format::from_bytes::<Response>(&bytes).unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(response.response_id, 17);
+        let entries = match response.response_inner {
+            ResponseInner::Name(entries) => entries,
+            other => panic!("expected NAME, got {:?}", other),
+        };
+        assert_eq!(entries.len(), names.len());
+        for (entry, name) in entries.iter().zip(names.iter()) {
+            assert_eq!(&*entry.filename, Path::new(name));
+            assert_entry_metadata(entry);
+
+            let bytes = name_entry_bytes(name.as_bytes());
+            let (entry, rest) = ssh_format::from_bytes::<NameEntry>(&bytes).unwrap();
+            assert_eq!(&*entry.filename, Path::new(name));
+            assert_entry_metadata(&entry);
+            assert!(rest.is_empty());
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn name_response_preserves_unix_bytes() {
+        let names: &[&[u8]] = &[b"raw-\xff\xfe", b"quote'\"\\\n\x01", "é-雪".as_bytes()];
+        let mut bytes = name_response_bytes(names);
+        bytes.push(0xaa);
+        let (response, rest) = ssh_format::from_bytes::<Response>(&bytes).unwrap();
+        assert_eq!(response.response_id, 17);
+        assert_eq!(rest, &[0xaa]);
+        let entries = match response.response_inner {
+            ResponseInner::Name(entries) => entries,
+            other => panic!("expected NAME, got {:?}", other),
+        };
+        assert_eq!(entries.len(), names.len());
+        for (entry, name) in entries.iter().zip(names) {
+            assert_eq!(entry.filename.as_os_str().as_bytes(), *name);
+            assert_entry_metadata(entry);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn name_entry_preserves_unix_bytes() {
+        let mut bytes = name_entry_bytes(b"raw-\xff\xfe");
+        bytes.push(0xaa);
+        let (entry, rest) = ssh_format::from_bytes::<NameEntry>(&bytes).unwrap();
+        assert_eq!(entry.filename.as_os_str().as_bytes(), b"raw-\xff\xfe");
+        assert_entry_metadata(&entry);
+        assert_eq!(rest, &[0xaa]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn name_entry_spanning_input_slices() {
+        let bytes = name_entry_bytes(b"raw-\xff\xfe");
+        let mut deserializer = ssh_format::Deserializer::new(bytes.chunks(5));
+        let entry = NameEntry::deserialize(&mut deserializer).unwrap();
+        assert_eq!(entry.filename.as_os_str().as_bytes(), b"raw-\xff\xfe");
+        assert_entry_metadata(&entry);
+        assert!(!deserializer.has_remaining_data());
+    }
+
+    #[test]
+    fn name_entry_utf8_json() {
+        let entry: NameEntry =
+            serde_json::from_str(r#"{"filename":"é-雪","longname":[255,32,45],"attrs":[0]}"#)
+                .unwrap();
+        assert_eq!(&*entry.filename, Path::new("é-雪"));
+        assert_eq!(&*entry.longname, b"\xff -");
+        assert_eq!(entry.attrs.get_size(), None);
+    }
+
+    #[test]
+    fn name_truncated_filename() {
+        let entry = [0, 0, 0, 6, b'r', b'a'];
+        assert!(ssh_format::from_bytes::<NameEntry>(&entry).is_err());
+        let mut response = vec![104, 0, 0, 0, 17, 0, 0, 0, 1];
+        response.extend_from_slice(&entry);
+        assert!(ssh_format::from_bytes::<Response>(&response).is_err());
+    }
 
     #[test]
     fn test_deserialize_statvfs() {
