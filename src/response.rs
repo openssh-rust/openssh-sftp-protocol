@@ -6,6 +6,10 @@ use super::{
 };
 
 use std::{borrow::Cow, iter::FusedIterator, path::Path, str::from_utf8};
+#[cfg(unix)]
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
+#[cfg(target_os = "wasi")]
+use std::os::wasi::ffi::{OsStrExt, OsStringExt};
 
 use bitflags::bitflags;
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
@@ -216,7 +220,7 @@ impl_visitor!(
                 let mut entries = Vec::<NameEntry>::with_capacity(len);
 
                 for _ in 0..len {
-                    let filename: Box<Path> = iter.get_next()?;
+                    let Filename(filename) = iter.get_next()?;
                     let longname: &[u8] = iter.get_next()?;
                     let attrs: FileAttrs = iter.get_next()?;
 
@@ -286,9 +290,63 @@ impl<'de> Deserialize<'de> for StatusCode {
     }
 }
 
+struct Filename(Box<Path>);
+
+impl<'de> Deserialize<'de> for Filename {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserialize_filename(deserializer).map(Filename)
+    }
+}
+
+fn deserialize_filename<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Box<Path>, D::Error> {
+    #[cfg(not(any(unix, target_os = "wasi")))]
+    {
+        Box::<Path>::deserialize(deserializer)
+    }
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    {
+        use std::{
+            ffi::{OsStr, OsString},
+            fmt,
+            path::PathBuf,
+        };
+
+        struct FilenameVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FilenameVisitor {
+            type Value = Box<Path>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a filename string")
+            }
+
+            fn visit_bytes<E: Error>(self, bytes: &[u8]) -> Result<Self::Value, E> {
+                Ok(Path::new(OsStr::from_bytes(bytes)).into())
+            }
+
+            fn visit_byte_buf<E: Error>(self, bytes: Vec<u8>) -> Result<Self::Value, E> {
+                Ok(PathBuf::from(OsString::from_vec(bytes)).into_boxed_path())
+            }
+
+            fn visit_str<E: Error>(self, value: &str) -> Result<Self::Value, E> {
+                self.visit_bytes(value.as_bytes())
+            }
+
+            fn visit_string<E: Error>(self, value: String) -> Result<Self::Value, E> {
+                self.visit_byte_buf(value.into_bytes())
+            }
+        }
+
+        // SFTP v3 filenames are SSH strings, not necessarily UTF-8 text.
+        deserializer.deserialize_bytes(FilenameVisitor)
+    }
+}
+
 /// Entry in [`ResponseInner::Name`]
 #[derive(Debug, Deserialize, Clone)]
 pub struct NameEntry {
+    #[serde(deserialize_with = "deserialize_filename")]
     pub filename: Box<Path>,
     pub longname: Box<[u8]>,
     pub attrs: FileAttrs,
@@ -296,7 +354,68 @@ pub struct NameEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::Statvfs;
+    use super::{NameEntry, Statvfs};
+    use std::path::Path;
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    use super::{Deserialize, OsStrExt, Response, ResponseInner};
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    fn name_entry_bytes(filename: &[u8]) -> Vec<u8> {
+        let mut bytes = (filename.len() as u32).to_be_bytes().to_vec();
+        bytes.extend_from_slice(filename);
+        // Raw longname, then attributes containing size = 123.
+        bytes.extend_from_slice(b"\0\0\0\x03\xff -\0\0\0\x01\0\0\0\0\0\0\0\x7b");
+        bytes
+    }
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    #[test]
+    fn name_response_preserves_raw_bytes() {
+        let names: &[&[u8]] = &[b"raw-\xff\xfe", "é-雪".as_bytes()];
+        let mut bytes = b"\x68\0\0\0\x11\0\0\0\x02".to_vec();
+        for name in names {
+            bytes.extend_from_slice(&name_entry_bytes(name));
+        }
+        bytes.push(0xaa);
+        let (response, rest) = ssh_format::from_bytes::<Response>(&bytes).unwrap();
+        assert_eq!(response.response_id, 17);
+        assert_eq!(rest, &[0xaa]);
+        let entries = match response.response_inner {
+            ResponseInner::Name(entries) => entries,
+            other => panic!("expected NAME, got {:?}", other),
+        };
+        assert_eq!(entries.len(), names.len());
+        for (entry, name) in entries.iter().zip(names) {
+            assert_eq!(entry.filename.as_os_str().as_bytes(), *name);
+            assert_eq!(&*entry.longname, b"\xff -");
+            assert_eq!(entry.attrs.get_size(), Some(123));
+        }
+    }
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    #[test]
+    fn name_entry_preserves_contiguous_and_chunked_bytes() {
+        let bytes = name_entry_bytes(b"raw-\xff\xfe");
+        for chunk_size in [bytes.len(), 5] {
+            let mut deserializer = ssh_format::Deserializer::new(bytes.chunks(chunk_size));
+            let entry = NameEntry::deserialize(&mut deserializer).unwrap();
+            assert_eq!(entry.filename.as_os_str().as_bytes(), b"raw-\xff\xfe");
+            assert_eq!(&*entry.longname, b"\xff -");
+            assert_eq!(entry.attrs.get_size(), Some(123));
+            assert!(!deserializer.has_remaining_data());
+        }
+    }
+
+    #[test]
+    fn name_entry_utf8_json() {
+        let entry: NameEntry =
+            serde_json::from_str(r#"{"filename":"é-雪","longname":[255,32,45],"attrs":[0]}"#)
+                .unwrap();
+        assert_eq!(&*entry.filename, Path::new("é-雪"));
+        assert_eq!(&*entry.longname, b"\xff -");
+        assert_eq!(entry.attrs.get_size(), None);
+    }
 
     #[test]
     fn test_deserialize_statvfs() {

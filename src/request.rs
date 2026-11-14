@@ -3,9 +3,39 @@
 use super::{constants, file_attrs::FileAttrs, open_options::OpenOptions, Handle};
 
 use std::{borrow::Cow, path::Path};
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
+#[cfg(target_os = "wasi")]
+use std::os::wasi::ffi::OsStrExt;
 
 use serde::{Serialize, Serializer};
 use ssh_format::SerOutput;
+
+fn serialize_path<S: Serializer>(path: &Path, serializer: S) -> Result<S::Ok, S::Error> {
+    #[cfg(any(unix, target_os = "wasi"))]
+    {
+        let bytes = path.as_os_str().as_bytes();
+        if bytes.contains(&0) {
+            return Err(serde::ser::Error::custom("path contains NUL"));
+        }
+
+        // SFTP filenames need not be UTF-8; retain string serialization when possible.
+        match path.to_str() {
+            Some(path) => serializer.serialize_str(path),
+            None => serializer.serialize_bytes(bytes),
+        }
+    }
+    #[cfg(not(any(unix, target_os = "wasi")))]
+    path.serialize(serializer)
+}
+
+struct BorrowedPath<'a>(&'a Path);
+
+impl Serialize for BorrowedPath<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serialize_path(self.0, serializer)
+    }
+}
 
 /// Response with `Response::Version`.
 pub struct Hello {
@@ -249,50 +279,81 @@ impl Serialize for Request<'_> {
                 len,
             } => (constants::SSH_FXP_READ, request_id, handle, *offset, *len).serialize(serializer),
 
-            Remove(filename) => {
-                (constants::SSH_FXP_REMOVE, request_id, filename).serialize(serializer)
+            Remove(filename) => (
+                constants::SSH_FXP_REMOVE,
+                request_id,
+                BorrowedPath(filename),
+            )
+                .serialize(serializer),
+
+            Rename { oldpath, newpath } => (
+                constants::SSH_FXP_RENAME,
+                request_id,
+                BorrowedPath(oldpath),
+                BorrowedPath(newpath),
+            )
+                .serialize(serializer),
+
+            Mkdir { path, attrs } => (
+                constants::SSH_FXP_MKDIR,
+                request_id,
+                BorrowedPath(path),
+                attrs,
+            )
+                .serialize(serializer),
+
+            Rmdir(path) => {
+                (constants::SSH_FXP_RMDIR, request_id, BorrowedPath(path)).serialize(serializer)
             }
 
-            Rename { oldpath, newpath } => {
-                (constants::SSH_FXP_RENAME, request_id, oldpath, newpath).serialize(serializer)
+            Opendir(path) => {
+                (constants::SSH_FXP_OPENDIR, request_id, BorrowedPath(path)).serialize(serializer)
             }
-
-            Mkdir { path, attrs } => {
-                (constants::SSH_FXP_MKDIR, request_id, path, attrs).serialize(serializer)
-            }
-
-            Rmdir(path) => (constants::SSH_FXP_RMDIR, request_id, path).serialize(serializer),
-
-            Opendir(path) => (constants::SSH_FXP_OPENDIR, request_id, path).serialize(serializer),
 
             Readdir(handle) => {
                 (constants::SSH_FXP_READDIR, request_id, handle).serialize(serializer)
             }
 
-            Stat(path) => (constants::SSH_FXP_STAT, request_id, path).serialize(serializer),
+            Stat(path) => {
+                (constants::SSH_FXP_STAT, request_id, BorrowedPath(path)).serialize(serializer)
+            }
 
-            Lstat(path) => (constants::SSH_FXP_LSTAT, request_id, path).serialize(serializer),
+            Lstat(path) => {
+                (constants::SSH_FXP_LSTAT, request_id, BorrowedPath(path)).serialize(serializer)
+            }
 
             Fstat(handle) => (constants::SSH_FXP_FSTAT, request_id, handle).serialize(serializer),
 
-            Setstat { path, attrs } => {
-                (constants::SSH_FXP_SETSTAT, request_id, path, attrs).serialize(serializer)
-            }
+            Setstat { path, attrs } => (
+                constants::SSH_FXP_SETSTAT,
+                request_id,
+                BorrowedPath(path),
+                attrs,
+            )
+                .serialize(serializer),
 
             Fsetstat { handle, attrs } => {
                 (constants::SSH_FXP_FSETSTAT, request_id, handle, attrs).serialize(serializer)
             }
 
-            Readlink(path) => (constants::SSH_FXP_READLINK, request_id, path).serialize(serializer),
+            Readlink(path) => {
+                (constants::SSH_FXP_READLINK, request_id, BorrowedPath(path)).serialize(serializer)
+            }
 
             Symlink {
                 linkpath,
                 targetpath,
-            } => {
-                (constants::SSH_FXP_SYMLINK, request_id, targetpath, linkpath).serialize(serializer)
-            }
+            } => (
+                constants::SSH_FXP_SYMLINK,
+                request_id,
+                BorrowedPath(targetpath),
+                BorrowedPath(linkpath),
+            )
+                .serialize(serializer),
 
-            Realpath(path) => (constants::SSH_FXP_REALPATH, request_id, path).serialize(serializer),
+            Realpath(path) => {
+                (constants::SSH_FXP_REALPATH, request_id, BorrowedPath(path)).serialize(serializer)
+            }
 
             Limits => (
                 constants::SSH_FXP_EXTENDED,
@@ -305,7 +366,7 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_STATVFS.0,
-                path,
+                BorrowedPath(path),
             )
                 .serialize(serializer),
 
@@ -321,7 +382,7 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_EXPAND_PATH.0,
-                path,
+                BorrowedPath(path),
             )
                 .serialize(serializer),
 
@@ -329,7 +390,7 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_LSETSTAT.0,
-                path,
+                BorrowedPath(path),
                 attrs,
             )
                 .serialize(serializer),
@@ -346,8 +407,8 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_HARDLINK.0,
-                oldpath,
-                newpath,
+                BorrowedPath(oldpath),
+                BorrowedPath(newpath),
             )
                 .serialize(serializer),
 
@@ -355,8 +416,8 @@ impl Serialize for Request<'_> {
                 constants::SSH_FXP_EXTENDED,
                 request_id,
                 constants::EXT_NAME_POSIX_RENAME.0,
-                oldpath,
-                newpath,
+                BorrowedPath(oldpath),
+                BorrowedPath(newpath),
             )
                 .serialize(serializer),
 
@@ -426,6 +487,7 @@ impl Request<'_> {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct OpenFileRequest<'a> {
+    #[serde(serialize_with = "serialize_path")]
     pub(crate) filename: Cow<'a, Path>,
     pub(crate) flags: u32,
     pub(crate) attrs: FileAttrs,
@@ -435,5 +497,92 @@ impl<'a> OpenFileRequest<'a> {
     /// Open file in read only mode
     pub const fn open(filename: Cow<'a, Path>) -> Self {
         OpenOptions::new().read(true).open(filename)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Cow, OpenFileRequest, Path, Request, RequestInner};
+    #[cfg(any(unix, target_os = "wasi"))]
+    use {super::OsStrExt, std::ffi::OsStr};
+
+    fn assert_request(inner: RequestInner<'_>, expected: &[u8]) {
+        let request = Request {
+            request_id: 17,
+            inner,
+        };
+        let bytes = ssh_format::to_bytes(&request).unwrap();
+        assert_eq!(&bytes[4..], expected, "{request:?}");
+    }
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    #[test]
+    fn outgoing_paths_preserve_raw_bytes() {
+        use RequestInner::*;
+
+        let first = Path::new(OsStr::from_bytes(b"a\xff"));
+        let second = Path::new(OsStr::from_bytes(b"b\xfe"));
+        let cases: [(RequestInner<'_>, &[u8]); 4] = [
+            (Stat(Cow::Borrowed(first)), b"\x11\0\0\0\x11\0\0\0\x02a\xff"),
+            (
+                Open(OpenFileRequest::open(Cow::Borrowed(first))),
+                b"\x03\0\0\0\x11\0\0\0\x02a\xff\0\0\0\x01\0\0\0\0",
+            ),
+            (
+                Symlink {
+                    linkpath: Cow::Borrowed(first),
+                    targetpath: Cow::Borrowed(second),
+                },
+                b"\x14\0\0\0\x11\0\0\0\x02b\xfe\0\0\0\x02a\xff",
+            ),
+            (
+                HardLink {
+                    oldpath: Cow::Borrowed(first),
+                    newpath: Cow::Borrowed(second),
+                },
+                b"\xc8\0\0\0\x11\0\0\0\x14hardlink@openssh.com\0\0\0\x02a\xff\0\0\0\x02b\xfe",
+            ),
+        ];
+        for (inner, expected) in cases {
+            assert_request(inner, expected);
+        }
+    }
+
+    #[test]
+    fn utf8_paths_keep_wire_and_json_compatibility() {
+        let text = "é-雪";
+        let path = Path::new(text);
+        assert_request(
+            RequestInner::Stat(Cow::Borrowed(path)),
+            b"\x11\0\0\0\x11\0\0\0\x06\xc3\xa9-\xe9\x9b\xaa",
+        );
+        let open = OpenFileRequest::open(Cow::Borrowed(path));
+        assert_eq!(serde_json::to_value(&open).unwrap()["filename"], text);
+        let request = Request {
+            request_id: 17,
+            inner: RequestInner::Stat(Cow::Borrowed(path)),
+        };
+        assert_eq!(
+            serde_json::to_value(&request).unwrap(),
+            serde_json::json!([17, 17, text])
+        );
+    }
+
+    #[cfg(any(unix, target_os = "wasi"))]
+    #[test]
+    fn outgoing_paths_reject_nul() {
+        for bytes in [b"a\0b".as_slice(), b"a\xff\0b".as_slice()] {
+            let path = Path::new(OsStr::from_bytes(bytes));
+            for inner in [
+                RequestInner::Stat(Cow::Borrowed(path)),
+                RequestInner::Open(OpenFileRequest::open(Cow::Borrowed(path))),
+            ] {
+                let request = Request {
+                    request_id: 17,
+                    inner,
+                };
+                assert!(ssh_format::to_bytes(&request).is_err(), "{:?}", request);
+            }
+        }
     }
 }

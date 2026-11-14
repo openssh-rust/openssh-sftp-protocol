@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject NUL-containing outgoing paths on Unix and WASI instead of stripping NULs from UTF-8 paths or sending them in non-UTF-8 paths.
+- Preserve non-UTF-8 filenames in requests and responses on WASI, matching Unix behavior.
+
 ## [0.26.0](https://github.com/openssh-rust/openssh-sftp-protocol/compare/openssh-sftp-protocol-v0.25.0...openssh-sftp-protocol-v0.26.0) - 2026-11-01
 
 ### Other
