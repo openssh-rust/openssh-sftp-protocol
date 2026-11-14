@@ -12,10 +12,15 @@ fn serialize_path<S: Serializer>(path: &Path, serializer: S) -> Result<S::Ok, S:
     {
         use std::os::unix::ffi::OsStrExt;
 
+        let bytes = path.as_os_str().as_bytes();
+        if bytes.contains(&0) {
+            return Err(serde::ser::Error::custom("path contains NUL"));
+        }
+
         // SFTP filenames need not be UTF-8; retain string serialization when possible.
         match path.to_str() {
             Some(path) => serializer.serialize_str(path),
-            None => serializer.serialize_bytes(path.as_os_str().as_bytes()),
+            None => serializer.serialize_bytes(bytes),
         }
     }
     #[cfg(not(unix))]
@@ -560,14 +565,23 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
-    fn utf8_embedded_nul_keeps_existing_serialization() {
-        let path = Path::new("a\0b");
-        assert_request(
-            RequestInner::Stat(Cow::Borrowed(path)),
-            b"\x11\0\0\0\x11\0\0\0\x02ab",
-        );
-        let open = OpenFileRequest::open(Cow::Borrowed(path));
-        assert_eq!(serde_json::to_value(&open).unwrap()["filename"], "a\0b");
+    fn outgoing_paths_reject_nul() {
+        use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
+
+        for bytes in [b"a\0b".as_slice(), b"a\xff\0b".as_slice()] {
+            let path = Path::new(OsStr::from_bytes(bytes));
+            for inner in [
+                RequestInner::Stat(Cow::Borrowed(path)),
+                RequestInner::Open(OpenFileRequest::open(Cow::Borrowed(path))),
+            ] {
+                let request = Request {
+                    request_id: 17,
+                    inner,
+                };
+                assert!(ssh_format::to_bytes(&request).is_err(), "{:?}", request);
+            }
+        }
     }
 }
