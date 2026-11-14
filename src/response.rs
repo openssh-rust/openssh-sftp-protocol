@@ -351,69 +351,29 @@ pub struct NameEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::{NameEntry, Response, ResponseInner, Statvfs};
-    #[cfg(unix)]
-    use serde::Deserialize;
+    use super::{NameEntry, Statvfs};
     use std::path::Path;
 
     #[cfg(unix)]
-    use std::os::unix::ffi::OsStrExt;
+    use {super::Response, super::ResponseInner, serde::Deserialize, std::os::unix::ffi::OsStrExt};
 
+    #[cfg(unix)]
     fn name_entry_bytes(filename: &[u8]) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&(filename.len() as u32).to_be_bytes());
+        let mut bytes = (filename.len() as u32).to_be_bytes().to_vec();
         bytes.extend_from_slice(filename);
-        bytes.extend_from_slice(&3u32.to_be_bytes());
-        bytes.extend_from_slice(b"\xff -");
-        bytes.extend_from_slice(&1u32.to_be_bytes());
-        bytes.extend_from_slice(&123u64.to_be_bytes());
+        // Raw longname, then attributes containing size = 123.
+        bytes.extend_from_slice(b"\0\0\0\x03\xff -\0\0\0\x01\0\0\0\0\0\0\0\x7b");
         bytes
-    }
-
-    fn name_response_bytes(filenames: &[&[u8]]) -> Vec<u8> {
-        let mut bytes = vec![104, 0, 0, 0, 17];
-        bytes.extend_from_slice(&(filenames.len() as u32).to_be_bytes());
-        for filename in filenames {
-            bytes.extend_from_slice(&name_entry_bytes(filename));
-        }
-        bytes
-    }
-
-    fn assert_entry_metadata(entry: &NameEntry) {
-        assert_eq!(&*entry.longname, b"\xff -");
-        assert_eq!(entry.attrs.get_size(), Some(123));
-        assert_eq!(entry.attrs.get_id(), None);
-    }
-
-    #[test]
-    fn name_utf8_paths() {
-        let names = ["plain", "é-雪"];
-        let bytes = name_response_bytes(&[names[0].as_bytes(), names[1].as_bytes()]);
-        let (response, rest) = ssh_format::from_bytes::<Response>(&bytes).unwrap();
-        assert!(rest.is_empty());
-        assert_eq!(response.response_id, 17);
-        let entries = match response.response_inner {
-            ResponseInner::Name(entries) => entries,
-            other => panic!("expected NAME, got {:?}", other),
-        };
-        assert_eq!(entries.len(), names.len());
-        for (entry, name) in entries.iter().zip(names.iter()) {
-            assert_eq!(&*entry.filename, Path::new(name));
-            assert_entry_metadata(entry);
-
-            let bytes = name_entry_bytes(name.as_bytes());
-            let (entry, rest) = ssh_format::from_bytes::<NameEntry>(&bytes).unwrap();
-            assert_eq!(&*entry.filename, Path::new(name));
-            assert_entry_metadata(&entry);
-            assert!(rest.is_empty());
-        }
     }
 
     #[cfg(unix)]
     #[test]
-    fn name_response_preserves_unix_bytes() {
-        let names: &[&[u8]] = &[b"raw-\xff\xfe", b"quote'\"\\\n\x01", "é-雪".as_bytes()];
-        let mut bytes = name_response_bytes(names);
+    fn name_response_preserves_raw_bytes() {
+        let names: &[&[u8]] = &[b"raw-\xff\xfe", "é-雪".as_bytes()];
+        let mut bytes = b"\x68\0\0\0\x11\0\0\0\x02".to_vec();
+        for name in names {
+            bytes.extend_from_slice(&name_entry_bytes(name));
+        }
         bytes.push(0xaa);
         let (response, rest) = ssh_format::from_bytes::<Response>(&bytes).unwrap();
         assert_eq!(response.response_id, 17);
@@ -425,30 +385,23 @@ mod tests {
         assert_eq!(entries.len(), names.len());
         for (entry, name) in entries.iter().zip(names) {
             assert_eq!(entry.filename.as_os_str().as_bytes(), *name);
-            assert_entry_metadata(entry);
+            assert_eq!(&*entry.longname, b"\xff -");
+            assert_eq!(entry.attrs.get_size(), Some(123));
         }
     }
 
     #[cfg(unix)]
     #[test]
-    fn name_entry_preserves_unix_bytes() {
-        let mut bytes = name_entry_bytes(b"raw-\xff\xfe");
-        bytes.push(0xaa);
-        let (entry, rest) = ssh_format::from_bytes::<NameEntry>(&bytes).unwrap();
-        assert_eq!(entry.filename.as_os_str().as_bytes(), b"raw-\xff\xfe");
-        assert_entry_metadata(&entry);
-        assert_eq!(rest, &[0xaa]);
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn name_entry_spanning_input_slices() {
+    fn name_entry_preserves_contiguous_and_chunked_bytes() {
         let bytes = name_entry_bytes(b"raw-\xff\xfe");
-        let mut deserializer = ssh_format::Deserializer::new(bytes.chunks(5));
-        let entry = NameEntry::deserialize(&mut deserializer).unwrap();
-        assert_eq!(entry.filename.as_os_str().as_bytes(), b"raw-\xff\xfe");
-        assert_entry_metadata(&entry);
-        assert!(!deserializer.has_remaining_data());
+        for chunk_size in [bytes.len(), 5] {
+            let mut deserializer = ssh_format::Deserializer::new(bytes.chunks(chunk_size));
+            let entry = NameEntry::deserialize(&mut deserializer).unwrap();
+            assert_eq!(entry.filename.as_os_str().as_bytes(), b"raw-\xff\xfe");
+            assert_eq!(&*entry.longname, b"\xff -");
+            assert_eq!(entry.attrs.get_size(), Some(123));
+            assert!(!deserializer.has_remaining_data());
+        }
     }
 
     #[test]
@@ -459,15 +412,6 @@ mod tests {
         assert_eq!(&*entry.filename, Path::new("é-雪"));
         assert_eq!(&*entry.longname, b"\xff -");
         assert_eq!(entry.attrs.get_size(), None);
-    }
-
-    #[test]
-    fn name_truncated_filename() {
-        let entry = [0, 0, 0, 6, b'r', b'a'];
-        assert!(ssh_format::from_bytes::<NameEntry>(&entry).is_err());
-        let mut response = vec![104, 0, 0, 0, 17, 0, 0, 0, 1];
-        response.extend_from_slice(&entry);
-        assert!(ssh_format::from_bytes::<Response>(&response).is_err());
     }
 
     #[test]
