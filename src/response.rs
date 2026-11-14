@@ -5,11 +5,11 @@ use super::{
     {constants, seq_iter::SeqIter, visitor::impl_visitor, HandleOwned},
 };
 
-use std::{borrow::Cow, iter::FusedIterator, path::Path, str::from_utf8};
 #[cfg(unix)]
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(target_os = "wasi")]
 use std::os::wasi::ffi::{OsStrExt, OsStringExt};
+use std::{borrow::Cow, iter::FusedIterator, path::Path, str::from_utf8};
 
 use bitflags::bitflags;
 use openssh_sftp_protocol_error::{ErrMsg, ErrorCode};
